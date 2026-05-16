@@ -1,5 +1,51 @@
 import { apiFetch } from './backendClient';
 
+// ── Participation ─────────────────────────────────────────────────────────────
+
+export async function joinEvent(event) {
+  return apiFetch(`/events/${event.id}/join`, {
+    method: 'POST',
+    body: JSON.stringify({
+      event_title: event.title,
+      event_start_at: event.startAt,
+      event_city: event.city || '',
+    }),
+  });
+}
+
+export async function unjoinEvent(eventId) {
+  return apiFetch(`/events/${eventId}/join`, { method: 'DELETE' });
+}
+
+export async function getMyEvents() {
+  return apiFetch('/events/my');
+}
+
+// ── Feedback chat ─────────────────────────────────────────────────────────────
+
+export async function sendFeedbackMessage(eventId, message) {
+  return apiFetch(`/events/${eventId}/feedback/message`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
+export async function completeFeedback(eventId) {
+  return apiFetch(`/events/${eventId}/feedback/complete`, { method: 'POST' });
+}
+
+export async function getFeedbackMessages(eventId) {
+  return apiFetch(`/events/${eventId}/feedback/messages`);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Returns true if the event's start time is in the past. */
+export function eventHasPassed(startAt) {
+  if (!startAt) return false;
+  return new Date(startAt) < new Date();
+}
+
 export const EVENT_CATEGORIES = [
   'All',
   'Language Exchange',
@@ -36,6 +82,7 @@ function normalizeEventForApp(event) {
     title: event.title,
     category: event.category,
     date,
+    startAt: event.start_at,   // raw ISO — used for "has event passed?" check
     location,
     description: event.summary || event.social_reason || event.description,
     emoji: categoryEmoji(event.category),

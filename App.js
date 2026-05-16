@@ -7,11 +7,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DoThemeProvider } from './src/context/DoThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import DoLandingScreen from './src/screens/DoLandingScreen';
 import DoLoginScreen from './src/screens/DoLoginScreen';
 import DoOnboardingScreen from './src/screens/DoOnboardingScreen';
 import { userStorageKeys } from './src/services/firebaseProfileService';
 import { ensureBackendProfile, submitOnboardingSurvey } from './src/services/onboardingSurveyService';
 import { colors } from './src/theme/colors';
+
+// Key stored once the landing screen has been dismissed
+const LANDING_SEEN_KEY = '@do_landing_seen';
 
 function FirebaseErrorBanner() {
   const { profileNotice } = useAuth();
@@ -28,6 +32,34 @@ function AppGate() {
   const [hasOnboarded, setHasOnboarded] = useState(null);
   const backendSyncedRef = useRef(false);
 
+  // Landing / login routing for unauthenticated users
+  // null = still checking storage, 'landing' = show landing, 'login' | 'signup' = show login
+  const [authView, setAuthView] = useState(null);
+
+  // Check AsyncStorage once — show landing only the very first time
+  useEffect(() => {
+    if (user) return; // logged in — no need
+    AsyncStorage.getItem(LANDING_SEEN_KEY).then((seen) => {
+      setAuthView(seen === 'true' ? 'login' : 'landing');
+    });
+  }, [user]);
+
+  // Reset auth view when user logs out
+  useEffect(() => {
+    if (!user) return;
+    setAuthView(null); // clear so the check runs again on next logout
+  }, [user]);
+
+  const handleGetStarted = async () => {
+    await AsyncStorage.setItem(LANDING_SEEN_KEY, 'true');
+    setAuthView('signup');
+  };
+
+  const handleSignIn = async () => {
+    await AsyncStorage.setItem(LANDING_SEEN_KEY, 'true');
+    setAuthView('login');
+  };
+
   useEffect(() => {
     if (!user || needsProfile) {
       setHasOnboarded(null);
@@ -39,7 +71,6 @@ function AppGate() {
       if (val === 'true') {
         setHasOnboarded(true);
       } else if (profile?.interests?.length > 0) {
-        // Interests set means onboarding was completed (possibly on another device)
         AsyncStorage.setItem(userStorageKeys(user.uid).onboarded, 'true');
         setHasOnboarded(true);
       } else {
@@ -49,7 +80,6 @@ function AppGate() {
   }, [needsProfile, profile, user]);
 
   // Ensure backend profile exists whenever the user reaches the main app.
-  // ensureBackendProfile is idempotent — safe to call every login.
   useEffect(() => {
     if (!user || !hasOnboarded || !profile?.nickname || backendSyncedRef.current) return;
     backendSyncedRef.current = true;
@@ -79,20 +109,48 @@ function AppGate() {
     setHasOnboarded(true);
   };
 
+  // ── Loading spinner ──
   if (loading || (user && !needsProfile && hasOnboarded === null)) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1c1815' }}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  // ── Unauthenticated ──
+  if (!user || needsProfile) {
+    // Still checking AsyncStorage
+    if (authView === null) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#1c1815' }} />
+      );
+    }
+
+    if (authView === 'landing') {
+      return (
+        <SafeAreaProvider>
+          <DoLandingScreen
+            onGetStarted={handleGetStarted}
+            onSignIn={handleSignIn}
+          />
+        </SafeAreaProvider>
+      );
+    }
+
+    return (
+      <SafeAreaProvider>
+        <FirebaseErrorBanner />
+        <DoLoginScreen initialMode={authView === 'signup' ? 'signup' : 'login'} />
+      </SafeAreaProvider>
+    );
+  }
+
+  // ── Authenticated ──
   return (
     <SafeAreaProvider>
       <FirebaseErrorBanner />
-      {!user || needsProfile ? (
-        <DoLoginScreen />
-      ) : hasOnboarded ? (
+      {hasOnboarded ? (
         <AppNavigator />
       ) : (
         <DoOnboardingScreen initialName={profile?.nickname || ''} onComplete={handleOnboardingComplete} />

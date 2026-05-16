@@ -3,6 +3,7 @@ from typing import Optional
 
 from ai_logic.friend_matching import recommend_friends
 from app.firebase import db
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 
 def get_recommended_users(user_profile: dict, candidates: list[dict]) -> list[dict]:
@@ -218,7 +219,7 @@ def save_chat_message(
 def get_chat_messages(room_id: str) -> list[dict]:
     docs = (
         db.collection("chat_messages")
-        .where("room_id", "==", room_id)
+        .where(filter=FieldFilter("room_id", "==", room_id))
         .stream()
     )
 

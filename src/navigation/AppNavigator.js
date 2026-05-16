@@ -13,6 +13,7 @@ import DoGatheringsScreen from '../screens/DoGatheringsScreen';
 import DoFriendsScreen from '../screens/DoFriendsScreen';
 import DoFriendChatScreen from '../screens/DoFriendChatScreen';
 import DoProfileScreen from '../screens/DoProfileScreen';
+import DoEventFeedbackScreen from '../screens/DoEventFeedbackScreen';
 import { useDoTheme } from '../context/DoThemeContext';
 
 const Tab = createBottomTabNavigator();
@@ -44,6 +45,7 @@ function GatherStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="GatherMain" component={DoGatheringsScreen} />
+      <Stack.Screen name="EventFeedback" component={DoEventFeedbackScreen} />
     </Stack.Navigator>
   );
 }

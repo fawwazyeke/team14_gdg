@@ -41,6 +41,7 @@ def doc_to_mission(doc_id: str, uid: str, data: dict) -> dict:
         "title": data.get("title", ""),
         "description": data.get("description", ""),
         "difficulty": data.get("difficulty", "easy"),
+        "category": data.get("category", "wellness"),
         "verification_type": data.get("verification_type"),   # None 허용 (AI 미션)
         "is_ai_generated": data.get("is_ai_generated", False),
         "status": data.get("status", "pending"),

@@ -3,6 +3,8 @@ import random
 from datetime import datetime, timezone
 from typing import Optional
 
+from google.cloud.firestore_v1.base_query import FieldFilter
+
 from app.database import user_doc, user_profiles_col
 from app.firebase import get_firestore
 
@@ -133,7 +135,8 @@ def get_friends(uid: str) -> list[dict]:
     col = _col()
     friends = []
 
-    for doc in col.where("uid_a", "==", uid).where("status", "==", "accepted").stream():
+    for doc in (col.where(filter=FieldFilter("uid_a", "==", uid))
+                   .where(filter=FieldFilter("status", "==", "accepted")).stream()):
         d = doc.to_dict()
         friends.append({
             "pair_key": d["pair_key"],
@@ -142,7 +145,8 @@ def get_friends(uid: str) -> list[dict]:
             "room_id": d["pair_key"],
         })
 
-    for doc in col.where("uid_b", "==", uid).where("status", "==", "accepted").stream():
+    for doc in (col.where(filter=FieldFilter("uid_b", "==", uid))
+                   .where(filter=FieldFilter("status", "==", "accepted")).stream()):
         d = doc.to_dict()
         friends.append({
             "pair_key": d["pair_key"],
@@ -158,7 +162,8 @@ def get_pending_requests(uid: str) -> list[dict]:
     col = _col()
     pending = []
 
-    for doc in col.where("uid_a", "==", uid).where("status", "==", "pending").stream():
+    for doc in (col.where(filter=FieldFilter("uid_a", "==", uid))
+                   .where(filter=FieldFilter("status", "==", "pending")).stream()):
         d = doc.to_dict()
         if d.get("initiated_by") != uid:
             pending.append({
@@ -167,7 +172,8 @@ def get_pending_requests(uid: str) -> list[dict]:
                 "alias": d.get("alias_for_a", "A fellow traveler"),
             })
 
-    for doc in col.where("uid_b", "==", uid).where("status", "==", "pending").stream():
+    for doc in (col.where(filter=FieldFilter("uid_b", "==", uid))
+                   .where(filter=FieldFilter("status", "==", "pending")).stream()):
         d = doc.to_dict()
         if d.get("initiated_by") != uid:
             pending.append({
@@ -193,9 +199,9 @@ def get_suggested_friends(uid: str) -> list[dict]:
 
     col = _col()
     known: set[str] = set()
-    for doc in col.where("uid_a", "==", uid).stream():
+    for doc in col.where(filter=FieldFilter("uid_a", "==", uid)).stream():
         known.add(doc.to_dict()["uid_b"])
-    for doc in col.where("uid_b", "==", uid).stream():
+    for doc in col.where(filter=FieldFilter("uid_b", "==", uid)).stream():
         known.add(doc.to_dict()["uid_a"])
 
     candidates = []

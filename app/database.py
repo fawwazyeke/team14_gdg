@@ -32,9 +32,11 @@ COL_STABILITY_LOGS       = "stability_logs"
 COL_MISSIONS             = "missions"
 COL_MISSION_RECORDS      = "mission_records"
 COL_ONBOARDING_ANSWERS   = "onboarding_answers"
-COL_BLOCKED_CHAT_MESSAGES = "blocked_chat_messages"
-COL_BLOCKED_AI_MESSAGES  = "blocked_ai_messages"
-COL_FRIENDSHIPS          = "friendships"
+COL_BLOCKED_CHAT_MESSAGES   = "blocked_chat_messages"
+COL_BLOCKED_AI_MESSAGES     = "blocked_ai_messages"
+COL_FRIENDSHIPS             = "friendships"
+COL_EVENT_PARTICIPATIONS    = "event_participations"
+COL_EVENT_FEEDBACK_MESSAGES = "feedback_messages"
 
 
 def user_profiles_col():
@@ -79,3 +81,21 @@ def blocked_ai_messages_col():
 def friendships_col():
     """Han이 관리하는 friendships 컬렉션. unfriend 시에만 사용."""
     return get_firestore().collection(COL_FRIENDSHIPS)
+
+
+# ── Event participation ───────────────────────────────────────────────────────
+
+def _participation_id(uid: str, event_id: str) -> str:
+    return f"{uid}__{event_id}"
+
+
+def event_participations_col():
+    return get_firestore().collection(COL_EVENT_PARTICIPATIONS)
+
+
+def event_participation_doc(uid: str, event_id: str):
+    return event_participations_col().document(_participation_id(uid, event_id))
+
+
+def event_feedback_messages_col(uid: str, event_id: str):
+    return event_participation_doc(uid, event_id).collection(COL_EVENT_FEEDBACK_MESSAGES)

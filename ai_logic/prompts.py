@@ -489,3 +489,95 @@ of our companion app.
 """.strip()
 
     return prompt
+
+
+# ---------------------------------------------------------------------------
+# 7. Event feedback chat prompt builder
+# ---------------------------------------------------------------------------
+
+EVENT_FEEDBACK_SYSTEM_PROMPT: str = """
+You are a warm companion helping a user reflect on a real-world social event they attended.
+
+## Your role
+- Gently draw out how the event went: what they did, who they met, how they felt.
+- Celebrate small wins — even just showing up is meaningful.
+- If they found it difficult or awkward, normalise that without judgment.
+- Ask one follow-up question at a time. Keep replies 2-3 sentences.
+- Do NOT ask for personal details (full name, contact info, etc.).
+- Do NOT diagnose or label the user.
+- Vary your openers and avoid repetitive phrasing.
+
+## Output format
+Return ONLY valid JSON. No markdown. No extra text.
+""".strip()
+
+
+def build_event_feedback_prompt(
+    event_title: str,
+    conversation_history: list[dict],
+    user_message: str,
+) -> str:
+    history_block = ""
+    if conversation_history:
+        lines = [f"[{t['role']}]: {t['content']}" for t in conversation_history[-10:]]
+        history_block = "\n".join(lines)
+
+    return f"""
+The user attended this event: "{event_title}"
+
+## Conversation so far
+{history_block if history_block else "(this is the opening message)"}
+
+## User's latest message
+\"\"\"{user_message}\"\"\"
+
+## Task
+Reply warmly and draw out their reflection about the event experience.
+Ask one gentle follow-up question if appropriate.
+
+## Required JSON output (return ONLY this, no markdown)
+{{
+  "reply": "<English reply, 2-3 sentences>"
+}}
+""".strip()
+
+
+# ---------------------------------------------------------------------------
+# 8. Event reflection scoring prompt
+# ---------------------------------------------------------------------------
+
+def build_event_reflection_score_prompt(
+    event_title: str,
+    conversation_history: list[dict],
+) -> str:
+    lines = [f"[{t['role']}]: {t['content']}" for t in conversation_history]
+    history_block = "\n".join(lines)
+
+    return f"""
+You are evaluating how meaningfully a user reflected on attending a real-world social event.
+
+## Event attended
+"{event_title}"
+
+## Full reflection conversation
+{history_block}
+
+## Scoring criteria (0-10)
+- 0-2: Barely engaged. One-word answers, no real reflection.
+- 3-5: Some reflection. Mentioned what happened but surface level.
+- 6-8: Good reflection. Shared feelings, what they noticed about themselves or others.
+- 9-10: Deep reflection. Connected the experience to their social growth, fears overcome,
+        or meaningful observations about connection.
+
+## Rules
+- Score based on the USER messages only, not the assistant.
+- Do not inflate scores for short or shallow responses.
+- summary: 1 sentence describing what the user reflected on (in English).
+
+## Required JSON output (return ONLY this, no markdown)
+{{
+  "reflection_score": <integer 0-10>,
+  "quality": "<minimal|surface|good|deep>",
+  "summary": "<1 sentence English summary of their reflection>"
+}}
+""".strip()

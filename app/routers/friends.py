@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.database import friendships_col
 from app.dependencies import get_current_uid
@@ -73,7 +74,7 @@ def unfriend(friend_uid: str, uid: str = Depends(get_current_uid)):
         return FriendUnfriendResponse(success=True, message="친구 관계가 삭제되었습니다.")
 
     # 혹시 user_ids 배열 방식으로 저장된 경우 폴백
-    docs = col.where("user_ids", "array_contains", uid).stream()
+    docs = col.where(filter=FieldFilter("user_ids", "array_contains", uid)).stream()
     for doc in docs:
         data = doc.to_dict() or {}
         if friend_uid in data.get("user_ids", []):

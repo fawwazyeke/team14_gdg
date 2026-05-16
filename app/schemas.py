@@ -30,6 +30,21 @@ SCORE_DELTA = {
     "gathering_attend":     20.0,
 }
 
+# Event feedback reflection score: Gemini rates 0-10, maps to these deltas
+EVENT_FEEDBACK_SCORE_MAP = [
+    (9, 8.0),   # 9-10 → +8  (deep, meaningful reflection)
+    (6, 5.0),   # 6-8  → +5  (good reflection)
+    (3, 3.0),   # 3-5  → +3  (some reflection)
+    (0, 1.0),   # 0-2  → +1  (minimal / showed up)
+]
+
+def event_feedback_delta(reflection_score: int) -> float:
+    """Map Gemini 0-10 reflection score to stability delta."""
+    for threshold, delta in EVENT_FEEDBACK_SCORE_MAP:
+        if reflection_score >= threshold:
+            return delta
+    return 1.0
+
 UNLOCK_THRESHOLD = {
     "user_chat": 60,
     "gathering": 100,
@@ -152,10 +167,11 @@ class MissionResponse(BaseModel):
     title: str
     description: str
     difficulty: str
+    category: str = "wellness"
     verification_type: Optional[str] = None
     is_ai_generated: bool
     status: str
-    stability_delta: int
+    stability_delta: float
     created_at: datetime
     completed_at: Optional[datetime] = None
 
@@ -286,6 +302,45 @@ class ModerationResult(BaseModel):
     is_toxic: bool
     severity: int
     reason: Optional[str] = None
+
+
+# ── Event Participation ───────────────────────────────────────────────────────
+
+class EventJoinRequest(BaseModel):
+    event_title: str
+    event_start_at: str      # ISO string from the Event model
+    event_city: str = ""
+
+
+class EventParticipationResponse(BaseModel):
+    uid: str
+    event_id: str
+    event_title: str
+    event_start_at: str
+    event_city: str
+    joined_at: datetime
+    feedback_completed: bool
+    feedback_score: Optional[int] = None
+    feedback_delta: Optional[float] = None
+
+
+class EventFeedbackMessageRequest(BaseModel):
+    message: str
+
+
+class EventFeedbackMessageResponse(BaseModel):
+    reply: str
+    message_count: int
+
+
+class EventFeedbackCompleteResponse(BaseModel):
+    uid: str
+    event_id: str
+    reflection_score: int    # 0-10 Gemini rating
+    delta: float
+    stability_score: float
+    stage: str
+    summary: str             # Gemini's brief summary of the reflection
 
 
 # Chat 관련 스키마는 Han 담당 (ai_chat_messages, chat_rooms, friendships)

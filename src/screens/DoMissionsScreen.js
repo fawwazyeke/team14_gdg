@@ -7,25 +7,38 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDoTheme } from '../context/DoThemeContext';
 import { Card } from '../components/DoAtoms';
-import { getDailyMissions, completeMission } from '../services/missionsService';
+import { getDailyMissions, completeMission, generateTodaysMissions } from '../services/missionsService';
 
-const CAT_EMOJI = { social: '✉️', physical: '☀️', explore: '🍵' };
-const CAT_LABELS = { social: 'Social', physical: 'Body', explore: 'Explore' };
-const CAT_TINT = {
-  social: '#E3ECE3',
-  physical: null,
-  explore: '#F0E5DD',
+// Maps ai_logic category → display
+const CAT_EMOJI = {
+  social: '✉️', friendship: '✉️',
+  walking: '🚶', fitness: '🏃',
+  music: '🎵',
+  self_reflection: '🪞', mindfulness: '🌿', wellness: '🌿',
+  gratitude: '🌸', emotion: '🌸', self_compassion: '🌸',
+  writing: '✏️',
+  food: '🍵', cafe: '🍵',
+  movies: '🎬', entertainment: '🎬',
+  health: '☀️', routine: '☀️',
+  cleaning: '🧹', planning: '📋',
+  interest: '💡', other: '🌱',
 };
-
+const CAT_LABELS = {
+  social: 'Social', friendship: 'Social',
+  walking: 'Movement', fitness: 'Movement',
+  music: 'Music',
+  self_reflection: 'Reflect', mindfulness: 'Mindful', wellness: 'Wellness',
+  gratitude: 'Gratitude', emotion: 'Feelings', self_compassion: 'Self-care',
+  writing: 'Writing',
+  food: 'Explore', cafe: 'Explore',
+  movies: 'Explore', entertainment: 'Explore',
+  health: 'Body', routine: 'Routine',
+  cleaning: 'Routine', planning: 'Planning',
+  interest: 'Interest', other: 'Mission',
+};
 function MissionCard({ mission, done, P, onComplete }) {
   const emoji = CAT_EMOJI[mission.category] || '🌱';
   const catLabel = CAT_LABELS[mission.category] || 'Mission';
-  const tint = CAT_TINT[mission.category] || P.wash;
-  const accent = mission.category === 'social'
-    ? P.accentDeep
-    : mission.category === 'explore'
-      ? P.primaryDeep
-      : P.primaryDeep;
 
   if (done) {
     return (
@@ -35,7 +48,7 @@ function MissionCard({ mission, done, P, onComplete }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.doneCat, { color: P.inkMuted }]}>{catLabel} · done</Text>
-          <Text style={[styles.doneTitle, { color: P.inkSoft }]}>{mission.title}</Text>
+          <Text style={[styles.doneTitle, { color: P.inkSoft }]}>{mission.title.replace(/\s*[—–]\s*/g, '. ')}</Text>
         </View>
       </View>
     );
@@ -45,16 +58,16 @@ function MissionCard({ mission, done, P, onComplete }) {
     <Card P={P} style={{ overflow: 'hidden' }}>
       {/* tinted band */}
       <LinearGradient
-        colors={[tint, P.surface]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        colors={[P.wash, P.surface]}
+        start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
         style={styles.cardBand}
       >
         <Text style={{ fontSize: 20 }}>{emoji}</Text>
-        <Text style={[styles.catLabel, { color: accent }]}>{catLabel.toUpperCase()}</Text>
+        <Text style={[styles.catLabel, { color: P.primary }]}>{catLabel.toUpperCase()}</Text>
       </LinearGradient>
       <View style={styles.cardBody}>
-        <Text style={[styles.missionTitle, { color: P.ink }]}>{mission.title}</Text>
-        <Text style={[styles.missionDesc, { color: P.inkSoft }]}>{mission.description}</Text>
+        <Text style={[styles.missionTitle, { color: P.ink }]}>{mission.title.replace(/\s*[—–]\s*/g, '. ')}</Text>
+        <Text style={[styles.missionDesc, { color: P.inkSoft }]}>{mission.description.replace(/\s*[—–]\s*/g, '. ')}</Text>
         <TouchableOpacity onPress={() => onComplete(mission)} activeOpacity={0.85}>
           <LinearGradient
             colors={[P.grad[0], P.grad[1]]}
@@ -75,6 +88,7 @@ export default function DoMissionsScreen() {
   const [missions, setMissions] = useState([]);
   const [completed, setCompleted] = useState({});
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(null);
   const [verifyText, setVerifyText] = useState('');
@@ -95,6 +109,22 @@ export default function DoMissionsScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError('');
+    try {
+      const result = await generateTodaysMissions();
+      setMissions(result);
+    } catch (err) {
+      const msg = err?.message || '';
+      setError(msg.includes('403') || msg.includes('locked')
+        ? 'Missions unlock at stability score 36. Complete the survey first.'
+        : 'Could not generate missions. Try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleComplete = (mission) => {
     if (mission.verificationType === 'text') {
@@ -120,12 +150,13 @@ export default function DoMissionsScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: P.bg }]}>
+      {/* Fixed header */}
+      <View style={[styles.header, { paddingTop: insets.top + 16, backgroundColor: P.bg }]}>
+        <Text style={[styles.screenTitle, { color: P.ink }]}>Today's bridges</Text>
+        <Text style={[styles.screenSub, { color: P.inkSoft }]}>Small steps towards connection.</Text>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Text style={[styles.screenTitle, { color: P.ink }]}>Today's bridges</Text>
-          <Text style={[styles.screenSub, { color: P.inkSoft }]}>Small steps towards connection.</Text>
-        </View>
 
         {/* Verification box */}
         {verifying && (
@@ -173,7 +204,30 @@ export default function DoMissionsScreen() {
           ) : error ? (
             <Text style={[styles.emptyText, { color: P.inkSoft }]}>{error}</Text>
           ) : missions.length === 0 ? (
-            <Text style={[styles.emptyText, { color: P.inkSoft }]}>No pending missions. Check back later!</Text>
+            <View style={styles.generateContainer}>
+              <Text style={[styles.generateHint, { color: P.inkSoft }]}>
+                Your personalised missions are ready to be made — tailored to where you are right now.
+              </Text>
+              <TouchableOpacity
+                onPress={handleGenerate}
+                disabled={generating}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={[P.grad[0], P.grad[1]]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.generateBtn}
+                >
+                  {generating
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.generateBtnText}>✦ Generate Today's Missions</Text>
+                  }
+                </LinearGradient>
+              </TouchableOpacity>
+              <Text style={[styles.generateNote, { color: P.inkMuted }]}>
+                Powered by Do · resets at midnight
+              </Text>
+            </View>
           ) : (
             missions.map((m, i) => (
               <MissionCard
@@ -230,4 +284,15 @@ const styles = StyleSheet.create({
 
   emptyText: { textAlign: 'center', fontSize: 15, marginTop: 40, paddingHorizontal: 24, lineHeight: 22 },
   footnote: { textAlign: 'center', fontSize: 13, margin: 16, lineHeight: 20 },
+
+  generateContainer: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 48, gap: 20 },
+  generateHint: { textAlign: 'center', fontSize: 15, lineHeight: 23 },
+  generateBtn: {
+    paddingVertical: 16, paddingHorizontal: 32,
+    borderRadius: 999,
+    shadowColor: '#E08A5F', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 12, elevation: 6,
+  },
+  generateBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+  generateNote: { fontSize: 12, marginTop: 4 },
 });

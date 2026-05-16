@@ -1,8 +1,11 @@
 """
-Mission service — Firestore 기반 AI 미션 생성.
+Mission service — AI mission generation, personalised by score + interests.
 
-기본 미션 (is_ai_generated=False): 라우터에서 직접 CRUD 처리.
-AI 미션  (is_ai_generated=True):  이 서비스에서 ai_logic으로 생성 후 Firestore 저장.
+Difficulty calibration by stability_score:
+  0–36   AI_START          → easy only, solo, no social pressure
+  36–60  MISSION_PRACTICE  → mostly easy, one medium allowed
+  60–100 READY_TO_CONNECT  → easy + medium, light social ok
+  100+   CONNECTING        → any difficulty including social
 """
 
 from typing import Optional
@@ -12,33 +15,120 @@ from ai_logic.prompts import build_task_generation_prompt, CHATBOT_SYSTEM_PROMPT
 from app.services.gemini_service import generate_json
 
 
-def generate_rule_based_mission(
+def _difficulty_instruction(score: float) -> str:
+    if score < 36:
+        return (
+            "DIFFICULTY RULE: Generate EASY missions only. "
+            "Solo, low-pressure activities. No social interaction required."
+        )
+    if score < 60:
+        return (
+            "DIFFICULTY RULE: Mostly easy missions. "
+            "One medium-difficulty mission is allowed if it is low-pressure."
+        )
+    if score < 100:
+        return (
+            "DIFFICULTY RULE: Mix of easy and medium. "
+            "One mission may involve light, optional social interaction."
+        )
+    return (
+        "DIFFICULTY RULE: Any difficulty. "
+        "Include a mix — easy, medium, and one that gently challenges social comfort."
+    )
+
+
+def generate_rule_based_missions(
     user_profile: dict,
     completed_task_ids: Optional[list] = None,
     current_mood: Optional[str] = None,
-) -> dict:
+    count: int = 3,
+) -> list[dict]:
     """
-    ai_logic 규칙 기반 엔진으로 미션 1개 생성.
-    Gemini 호출 없이 오프라인으로 작동.
-    반환: { title, description, difficulty, stability_delta }
+    Rule-based mission generation (no Gemini). Used as fallback.
+    Returns list of { title, description, difficulty, category, stability_delta }.
     """
     result = recommend_tasks(
         user_profile=user_profile,
         completed_task_ids=completed_task_ids,
         current_mood=current_mood,
-        count=1,
+        count=count,
     )
-    tasks = result.get("tasks", [])
-    if not tasks:
-        return _fallback_mission()
+    items = result.get("tasks", [])
+    missions = []
+    for item in items:
+        # recommend_tasks returns {"task": {...}, "reason": "...", "score": ...}
+        task = item.get("task", {}) if isinstance(item, dict) and "task" in item else item
+        missions.append({
+            "title": task.get("title", "Today's mission"),
+            "description": task.get("description", ""),
+            "difficulty": task.get("difficulty", "easy"),
+            "category": task.get("category", "wellness"),
+            "stability_delta": float(task.get("estimated_minutes", 3)),
+        })
 
-    t = tasks[0]
-    return {
-        "title": t.get("title", "오늘의 미션"),
-        "description": t.get("description", ""),
-        "difficulty": t.get("difficulty", "easy"),
-        "stability_delta": t.get("stability_delta", 3),
+    if not missions:
+        return [_fallback_mission() for _ in range(count)]
+    return missions
+
+
+def generate_rule_based_mission(
+    user_profile: dict,
+    completed_task_ids: Optional[list] = None,
+    current_mood: Optional[str] = None,
+) -> dict:
+    return generate_rule_based_missions(user_profile, completed_task_ids, current_mood, count=1)[0]
+
+
+def generate_ai_missions(
+    user_profile: dict,
+    completed_task_ids: Optional[list] = None,
+    current_mood: Optional[str] = None,
+    count: int = 3,
+) -> list[dict]:
+    """
+    Generate count personalised missions via Gemini.
+    Injects score-based difficulty calibration into the prompt.
+    Falls back to rule-based if Gemini fails.
+    """
+    score = float(user_profile.get("stability_score", 0))
+    difficulty_note = _difficulty_instruction(score)
+
+    # Inject score + difficulty hint directly into user_profile so the
+    # prompt builder includes it in the profile block Gemini reads.
+    enriched_profile = {
+        **user_profile,
+        "_difficulty_instruction": difficulty_note,
+        "_stability_score": score,
     }
+
+    prompt = build_task_generation_prompt(
+        user_profile=enriched_profile,
+        completed_task_ids=completed_task_ids,
+        current_mood=current_mood,
+        count=count,
+    )
+
+    # Append the difficulty rule explicitly after the profile block
+    prompt = prompt + f"\n\n## Difficulty calibration\n{difficulty_note}"
+
+    result = generate_json(prompt=prompt, system_instruction=CHATBOT_SYSTEM_PROMPT)
+    tasks = (result or {}).get("tasks", [])
+
+    if not tasks:
+        return generate_rule_based_missions(user_profile, completed_task_ids, current_mood, count)
+
+    missions = []
+    for t in tasks[:count]:
+        # Gemini returns estimated_minutes; use it as a proxy for stability_delta
+        raw_delta = t.get("stability_delta") or t.get("estimated_minutes") or 3
+        missions.append({
+            "title": t.get("title", "Today's mission"),
+            "description": t.get("description", ""),
+            "difficulty": t.get("difficulty", "easy"),
+            "category": t.get("category", "wellness"),
+            "stability_delta": float(raw_delta),
+        })
+    return missions
 
 
 def generate_ai_mission(
@@ -46,36 +136,14 @@ def generate_ai_mission(
     completed_task_ids: Optional[list] = None,
     current_mood: Optional[str] = None,
 ) -> dict:
-    """
-    Gemini로 개인화 AI 미션 생성.
-    실패 시 규칙 기반으로 폴백.
-    반환: { title, description, difficulty, stability_delta }
-    """
-    prompt = build_task_generation_prompt(
-        user_profile=user_profile,
-        completed_task_ids=completed_task_ids,
-        current_mood=current_mood,
-        count=1,
-    )
-    result = generate_json(prompt=prompt, system_instruction=CHATBOT_SYSTEM_PROMPT)
-
-    tasks = (result or {}).get("tasks", [])
-    if not tasks:
-        return generate_rule_based_mission(user_profile, completed_task_ids, current_mood)
-
-    t = tasks[0]
-    return {
-        "title": t.get("title", "오늘의 미션"),
-        "description": t.get("description", ""),
-        "difficulty": t.get("difficulty", "easy"),
-        "stability_delta": t.get("stability_delta", 5),
-    }
+    return generate_ai_missions(user_profile, completed_task_ids, current_mood, count=1)[0]
 
 
 def _fallback_mission() -> dict:
     return {
-        "title": "오늘 한 가지 친절한 행동 해보기",
-        "description": "주변 사람에게 따뜻한 말 한마디나 작은 도움을 건네보세요.",
+        "title": "Take a mindful moment",
+        "description": "Step outside for 5 minutes and notice three things around you.",
         "difficulty": "easy",
-        "stability_delta": 3,
+        "category": "wellness",
+        "stability_delta": 3.0,
     }

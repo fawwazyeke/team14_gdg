@@ -7,14 +7,16 @@ user_profiles/{uid}/mission_records ← 완료 + 인증 기록
   기본 미션 (is_ai_generated=False): verification_type = "text" | "photo" 필수
   AI 미션  (is_ai_generated=True):  verification_type = None, 인증 불필요
 """
-from datetime import datetime
+from datetime import datetime, timezone, date as date_type
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.database import mission_records_col, missions_col, stability_logs_col, user_doc
 from app.dependencies import get_current_uid
 from app.models import doc_to_mission, doc_to_record
+from app.services.mission_service import generate_ai_missions, generate_rule_based_missions
 from app.schemas import (
     MissionCompleteRequest,
     MissionCompleteResponse,
@@ -78,11 +80,82 @@ def create_mission(body: MissionCreate, uid: str = Depends(get_current_uid)):
     return doc_to_mission(doc_id, uid, data)
 
 
+def _today_str() -> str:
+    return date_type.today().isoformat()   # "YYYY-MM-DD"
+
+
+def _delete_old_missions(col) -> None:
+    """Delete all missions whose date field is not today (midnight reset)."""
+    today = _today_str()
+    for doc in col.stream():
+        d = doc.to_dict()
+        if d.get("mission_date") != today:
+            doc.reference.delete()
+
+
+def _store_missions(col, mission_dicts: list) -> list:
+    """Write generated missions to Firestore, return doc data list."""
+    now = datetime.now(timezone.utc)
+    today = _today_str()
+    stored = []
+    for m in mission_dicts:
+        data = {
+            "title": m.get("title", ""),
+            "description": m.get("description", ""),
+            "difficulty": m.get("difficulty", "easy"),
+            "category": m.get("category", "wellness"),
+            "verification_type": None,
+            "is_ai_generated": True,
+            "status": "pending",
+            "stability_delta": float(m.get("stability_delta", 3)),
+            "mission_date": today,
+            "created_at": now,
+            "completed_at": None,
+        }
+        ref = col.add(data)
+        stored.append((ref[1].id, data))
+    return stored
+
+
 @router.get("", response_model=List[MissionResponse])
 def list_missions(uid: str = Depends(get_current_uid)):
+    """Return today's missions. Does NOT auto-generate — user must press the button."""
     _require_mission_unlocked(uid)
-    docs = missions_col(uid).order_by("created_at").stream()
+    col = missions_col(uid)
+    today = _today_str()
+
+    docs = [
+        d for d in col.order_by("created_at").stream()
+        if d.to_dict().get("mission_date") == today
+    ]
     return [doc_to_mission(d.id, uid, d.to_dict()) for d in docs]
+
+
+@router.post("/generate", response_model=List[MissionResponse])
+def generate_todays_missions(uid: str = Depends(get_current_uid)):
+    """
+    Generate today's 3 AI missions using Gemini, personalised by score + interests.
+    No-ops and returns existing missions if already generated today.
+    Deletes previous days' missions first (midnight reset).
+    """
+    profile = _require_mission_unlocked(uid)
+    col = missions_col(uid)
+    today = _today_str()
+
+    # Already generated today — return as-is
+    todays = [d for d in col.order_by("created_at").stream()
+              if d.to_dict().get("mission_date") == today]
+    if todays:
+        return [doc_to_mission(d.id, uid, d.to_dict()) for d in todays]
+
+    # Delete stale missions from previous days
+    _delete_old_missions(col)
+
+    # Generate personalised missions
+    mission_dicts = generate_ai_missions(user_profile=profile, count=3)
+
+    stored = _store_missions(col, mission_dicts)
+    return [doc_to_mission(doc_id, uid, data) for doc_id, data in stored]
 
 
 @router.get("/today", response_model=TodayMissionResponse)
@@ -90,7 +163,7 @@ def get_today_mission(uid: str = Depends(get_current_uid)):
     _require_mission_unlocked(uid)
     docs = list(
         missions_col(uid)
-        .where("status", "==", "pending")
+        .where(filter=FieldFilter("status", "==", "pending"))
         .order_by("created_at")
         .limit(1)
         .stream()

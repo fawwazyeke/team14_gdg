@@ -11,12 +11,12 @@ import { nicknameFromEmail } from '../services/firebaseProfileService';
 
 const IS_WEB = Platform.OS === 'web';
 
-export default function DoLoginScreen() {
+export default function DoLoginScreen({ initialMode = 'login' }) {
   const { P } = useDoTheme();
   const insets = useSafeAreaInsets();
   const { user, needsProfile, signIn, signUp, signInWithGoogle, completeProfile } = useAuth();
 
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
@@ -139,9 +139,6 @@ export default function DoLoginScreen() {
           <Text style={[styles.heading, { color: P.ink }]}>
             {mode === 'login' ? 'Welcome back.' : 'Find your people.'}
           </Text>
-          <Text style={[styles.sub, { color: P.inkSoft }]}>
-            Small, real steps toward connection — in Korea and beyond.
-          </Text>
 
           {/* Google sign-in */}
           <TouchableOpacity
@@ -204,9 +201,6 @@ export default function DoLoginScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          <Text style={[styles.hint, { color: P.inkMuted }]}>
-            No strangers list. No likes. Just small steps.
-          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
