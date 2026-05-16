@@ -5,6 +5,7 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://127.
 export async function apiFetch(path, options = {}) {
   const token = await firebaseAuth.currentUser?.getIdToken();
   const headers = {
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers || {}),
   };
 

@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SURVEY_QUESTIONS } from '../services/onboardingSurveyService';
 import { colors } from '../theme/colors';
 
 const INTERESTS = ['Sports', 'Music', 'Gaming', 'Art', 'Books', 'Nature', 'Food', 'Tech'];
@@ -16,6 +17,9 @@ const INTERESTS = ['Sports', 'Music', 'Gaming', 'Art', 'Books', 'Nature', 'Food'
 const OnboardingScreen = ({ initialName = '', onComplete }) => {
   const [name, setName] = useState(initialName);
   const [selectedInterests, setSelectedInterests] = useState([]);
+  const [surveyAnswers, setSurveyAnswers] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleInterest = (interest) => {
     setSelectedInterests(prev =>
@@ -26,9 +30,20 @@ const OnboardingScreen = ({ initialName = '', onComplete }) => {
   };
 
   const handleStart = async () => {
-    if (!name.trim()) return;
-    onComplete({ name: name.trim(), interests: selectedInterests });
+    if (!name.trim() || !allQuestionsAnswered || submitting) return;
+
+    setSubmitting(true);
+    setError('');
+    try {
+      await onComplete({ name: name.trim(), interests: selectedInterests, surveyAnswers });
+    } catch {
+      setError('Could not save onboarding. Make sure the backend is running, then try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const allQuestionsAnswered = SURVEY_QUESTIONS.every((question) => surveyAnswers[question.key]);
 
   return (
     <KeyboardAvoidingView
@@ -74,12 +89,42 @@ const OnboardingScreen = ({ initialName = '', onComplete }) => {
           })}
         </View>
 
+        <Text style={styles.label}>A few gentle check-in questions</Text>
+        <Text style={styles.questionIntro}>
+          These help Do unlock the right practice flow. Pick what feels true today.
+        </Text>
+
+        {SURVEY_QUESTIONS.map((question, index) => (
+          <View key={question.key} style={styles.questionCard}>
+            <Text style={styles.questionNumber}>Question {index + 1}</Text>
+            <Text style={styles.questionText}>{question.prompt}</Text>
+            <View style={styles.optionStack}>
+              {question.options.map((option) => {
+                const active = surveyAnswers[question.key] === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.optionButton, active && styles.optionButtonActive]}
+                    onPress={() => setSurveyAnswers(prev => ({ ...prev, [question.key]: option.value }))}
+                  >
+                    <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ))}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         <TouchableOpacity
-          style={[styles.button, !name.trim() && styles.buttonDisabled]}
+          style={[styles.button, (!name.trim() || !allQuestionsAnswered || submitting) && styles.buttonDisabled]}
           onPress={handleStart}
-          disabled={!name.trim()}
+          disabled={!name.trim() || !allQuestionsAnswered || submitting}
         >
-          <Text style={styles.buttonText}>Let's Go →</Text>
+          <Text style={styles.buttonText}>{submitting ? 'Saving...' : "Let's Go →"}</Text>
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
@@ -145,6 +190,64 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 40,
     width: '100%',
+  },
+  questionIntro: {
+    color: colors.textLight,
+    fontSize: 13,
+    lineHeight: 19,
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+  },
+  questionCard: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    padding: 14,
+    marginBottom: 14,
+  },
+  questionNumber: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  questionText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 21,
+    marginBottom: 12,
+  },
+  optionStack: {
+    gap: 8,
+  },
+  optionButton: {
+    borderWidth: 1.5,
+    borderColor: '#d0d0d0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    backgroundColor: colors.surface,
+  },
+  optionButtonActive: {
+    borderColor: colors.primary,
+    backgroundColor: '#EAF3FF',
+  },
+  optionText: {
+    color: colors.textLight,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  optionTextActive: {
+    color: colors.text,
+  },
+  errorText: {
+    color: '#b3261e',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   chip: {
     paddingHorizontal: 16,
