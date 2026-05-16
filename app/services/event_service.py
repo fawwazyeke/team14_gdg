@@ -12,6 +12,8 @@ from urllib.parse import urljoin
 import httpx
 from pydantic import BaseModel, Field
 
+from app.services.firebase_event_store import save_events_to_firestore
+
 City = Literal["seoul", "tokyo"]
 
 
@@ -50,6 +52,9 @@ class EventRefreshResult(BaseModel):
     fetched_at: str
     source_counts: dict[str, int]
     stored: int
+    firebase_enabled: bool = False
+    firebase_saved: int = 0
+    firebase_error: str | None = None
 
 
 class EventQuery(BaseModel):
@@ -147,6 +152,16 @@ async def refresh_events(from_date: str | None = None, to_date: str | None = Non
 
     _events_cache = dedupe_events(events)
     _cache_time = datetime.now(timezone.utc)
+    firebase_result = await save_events_to_firestore(
+        events=_events_cache,
+        refresh_metadata={
+            "from_date": from_day.isoformat(),
+            "to_date": to_day.isoformat(),
+            "fetched_at": fetched_at,
+            "source_counts": source_counts,
+            "stored": len(_events_cache),
+        },
+    )
 
     return EventRefreshResult(
         from_date=from_day.isoformat(),
@@ -154,6 +169,9 @@ async def refresh_events(from_date: str | None = None, to_date: str | None = Non
         fetched_at=fetched_at,
         source_counts=source_counts,
         stored=len(_events_cache),
+        firebase_enabled=firebase_result.enabled,
+        firebase_saved=firebase_result.saved,
+        firebase_error=firebase_result.error,
     )
 
 

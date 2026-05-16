@@ -4,3 +4,4 @@ python-dotenv
 sqlalchemy
 pydantic
 httpx
+firebase-admin
