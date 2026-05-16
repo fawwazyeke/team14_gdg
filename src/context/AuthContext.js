@@ -39,6 +39,8 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      setLoading(true);
+
       try {
         const remoteProfile = await withTimeout(getUserProfile(nextUser.uid), 3000);
         const pendingProfile = await getPendingProfile(nextUser.uid);
