@@ -150,35 +150,47 @@ export default function DoGatheringsScreen() {
         <Text style={[styles.screenTitle, { color: P.ink }]}>Gatherings, gently</Text>
         <Text style={[styles.screenSub, { color: P.inkSoft }]}>Small rooms. Low pressure. Bring yourself.</Text>
 
-        {/* City toggle */}
-        <View style={[styles.cityRow, { backgroundColor: P.surface, borderColor: P.line }]}>
-          {CITIES.map(c => (
-            <TouchableOpacity
-              key={c.id}
-              onPress={() => setCity(c.id)}
-              style={[styles.cityBtn, city === c.id && { backgroundColor: P.primary }]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.cityBtnText, { color: city === c.id ? '#fff' : P.inkSoft }]}>
-                {c.flag} {c.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        {/* City + Category row */}
+        <View style={styles.filterRow}>
+          {/* City toggle */}
+          <View style={[styles.pill, { backgroundColor: P.surface, borderColor: P.line }]}>
+            {CITIES.map(c => (
+              <TouchableOpacity
+                key={c.id}
+                onPress={() => setCity(c.id)}
+                style={[styles.pillBtn, city === c.id && { backgroundColor: P.primary }]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.pillBtnText, { color: city === c.id ? '#fff' : P.inkSoft }]}>
+                  {c.flag} {c.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Category selector */}
+          <ScrollView
+            horizontal showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.catScroll}
+            style={{ flex: 1 }}
+          >
+            <View style={[styles.pill, { backgroundColor: P.surface, borderColor: P.line }]}>
+              {EVENT_CATEGORIES.map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setActiveCategory(cat)}
+                  style={[styles.pillBtn, activeCategory === cat && { backgroundColor: P.primary }]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.pillBtnText, { color: activeCategory === cat ? '#fff' : P.inkSoft }]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </View>
       </View>
-
-      {/* Category chips */}
-      <ScrollView
-        horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterBar}
-        style={{ flexGrow: 0 }}
-      >
-        {EVENT_CATEGORIES.map(cat => (
-          <Chip key={cat} P={P} active={activeCategory === cat} onPress={() => setActiveCategory(cat)}>
-            {cat}
-          </Chip>
-        ))}
-      </ScrollView>
 
       {/* List */}
       <ScrollView
@@ -221,14 +233,11 @@ const styles = StyleSheet.create({
   screenTitle: { fontSize: 30, fontWeight: '600', letterSpacing: -0.5 },
   screenSub: { fontSize: 15, marginTop: 6, lineHeight: 22, marginBottom: 14 },
 
-  cityRow: {
-    flexDirection: 'row', borderRadius: 999, borderWidth: 0.5,
-    padding: 4, alignSelf: 'flex-start',
-  },
-  cityBtn: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: 999 },
-  cityBtnText: { fontSize: 14, fontWeight: '600' },
-
-  filterBar: { paddingHorizontal: 20, paddingVertical: 12, gap: 8 },
+  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  pill: { flexDirection: 'row', borderRadius: 999, borderWidth: 0.5, padding: 3 },
+  pillBtn: { paddingVertical: 7, paddingHorizontal: 13, borderRadius: 999 },
+  pillBtnText: { fontSize: 13, fontWeight: '600' },
+  catScroll: { gap: 0 },
   list: { paddingHorizontal: 20, paddingBottom: 110 },
 
   skeletonCard: {},
