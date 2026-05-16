@@ -49,7 +49,16 @@ export const DEFAULT_SURVEY_ANSWERS = {
 
 export async function ensureBackendProfile({ nickname, interests, age }) {
   try {
-    return await apiFetch('/users/me');
+    const existing = await apiFetch('/users/me');
+    if ((existing?.stability_score ?? 0) <= 0) {
+      try {
+        await submitOnboardingSurvey(DEFAULT_SURVEY_ANSWERS);
+        return await apiFetch('/users/me');
+      } catch (e) {
+        console.warn('Default survey repair failed:', e.message);
+      }
+    }
+    return existing;
   } catch (error) {
     if (!String(error.message || '').includes('Profile not found')) {
       throw error;
