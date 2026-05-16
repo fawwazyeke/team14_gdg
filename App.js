@@ -9,7 +9,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { userStorageKeys } from './src/services/firebaseProfileService';
-import { createBackendProfile, submitOnboardingSurvey } from './src/services/onboardingSurveyService';
+import { ensureBackendProfile, submitOnboardingSurvey } from './src/services/onboardingSurveyService';
 import { colors } from './src/theme/colors';
 
 function AppGate() {
@@ -32,15 +32,16 @@ function AppGate() {
       return;
     }
 
+    await completeProfile(name, { interests });
+    await ensureBackendProfile({ nickname: name, interests });
+    await submitOnboardingSurvey(surveyAnswers);
+
     const keys = userStorageKeys(user.uid);
     await AsyncStorage.multiSet([
       [keys.name, name.trim()],
       [keys.interests, JSON.stringify(interests)],
       [keys.onboarded, 'true'],
     ]);
-    await completeProfile(name, { interests });
-    await createBackendProfile({ nickname: name, interests });
-    await submitOnboardingSurvey(surveyAnswers);
     setHasOnboarded(true);
   };
 

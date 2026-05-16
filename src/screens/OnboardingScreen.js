@@ -36,8 +36,8 @@ const OnboardingScreen = ({ initialName = '', onComplete }) => {
     setError('');
     try {
       await onComplete({ name: name.trim(), interests: selectedInterests, surveyAnswers });
-    } catch {
-      setError('Could not save onboarding. Make sure the backend is running, then try again.');
+    } catch (caught) {
+      setError(caught?.message || 'Could not save onboarding. Make sure the backend is running, then try again.');
     } finally {
       setSubmitting(false);
     }

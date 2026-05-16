@@ -39,7 +39,15 @@ export const SURVEY_QUESTIONS = [
   },
 ];
 
-export async function createBackendProfile({ nickname, interests }) {
+export async function ensureBackendProfile({ nickname, interests }) {
+  try {
+    return await apiFetch('/users/me');
+  } catch (error) {
+    if (!String(error.message || '').includes('Profile not found')) {
+      throw error;
+    }
+  }
+
   try {
     return await apiFetch('/users', {
       method: 'POST',
@@ -51,10 +59,10 @@ export async function createBackendProfile({ nickname, interests }) {
       }),
     });
   } catch (error) {
-    if (String(error.message || '').includes('Profile already exists')) {
-      return null;
+    if (!String(error.message || '').includes('Profile already exists')) {
+      throw error;
     }
-    throw error;
+    return apiFetch('/users/me');
   }
 }
 

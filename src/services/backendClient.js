@@ -20,8 +20,25 @@ export async function apiFetch(path, options = {}) {
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || `API request failed with ${response.status}`);
+    throw new Error(readErrorMessage(message, response.status));
   }
 
   return response.json();
+}
+
+function readErrorMessage(message, status) {
+  if (!message) {
+    return `API request failed with ${status}`;
+  }
+
+  try {
+    const parsed = JSON.parse(message);
+    if (parsed.detail) {
+      return typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail);
+    }
+  } catch {
+    return message;
+  }
+
+  return message;
 }
