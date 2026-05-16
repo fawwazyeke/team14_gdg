@@ -4,18 +4,9 @@
   "outputDirectory": "dist",
   "framework": null,
   "env": {
-    "EXPO_PUBLIC_API_BASE_URL": "https://web-production-efb69.up.railway.app",
-    "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "team14-gdg.vercel.app"
+    "EXPO_PUBLIC_API_BASE_URL": "https://web-production-efb69.up.railway.app"
   },
   "rewrites": [
-    {
-      "source": "/__/auth/:path*",
-      "destination": "https://do-test-925d3.firebaseapp.com/__/auth/:path*"
-    },
-    {
-      "source": "/__/firebase/:path*",
-      "destination": "https://do-test-925d3.firebaseapp.com/__/firebase/:path*"
-    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

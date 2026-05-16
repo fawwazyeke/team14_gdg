@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import {
   browserLocalPersistence,
-  browserPopupRedirectResolver,
   createUserWithEmailAndPassword,
   getAuth,
   getReactNativePersistence,
@@ -42,7 +41,6 @@ try {
   if (Platform.OS === 'web') {
     auth = initializeAuth(firebaseApp, {
       persistence: browserLocalPersistence,
-      popupRedirectResolver: browserPopupRedirectResolver,
     });
   } else {
     auth = initializeAuth(firebaseApp, {
@@ -58,11 +56,7 @@ export const firebaseDb = getFirestore(firebaseApp);
 export const googleProvider = new GoogleAuthProvider();
 export const loginWithEmail = signInWithEmailAndPassword;
 export const createAccountWithEmail = createUserWithEmailAndPassword;
-export const loginWithGooglePopup = (authInstance, provider) => (
-  Platform.OS === 'web'
-    ? signInWithPopup(authInstance, provider, browserPopupRedirectResolver)
-    : signInWithPopup(authInstance, provider)
-);
+export const loginWithGooglePopup = signInWithPopup;
 export const logoutFromFirebase = signOut;
 
 googleProvider.setCustomParameters({
