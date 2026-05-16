@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { firebaseDb } from '../config/firebase';
+import { apiFetch } from './backendClient';
 
 const USER_PROFILES_COLLECTION = 'user_profiles';
 
@@ -18,34 +19,32 @@ export async function getUserProfile(uid) {
 }
 
 export async function saveUserProfile(input) {
-  const ref = doc(firebaseDb, USER_PROFILES_COLLECTION, input.uid);
-  const snapshot = await getDoc(ref);
-  const data = {
-    uid: input.uid,
-    nickname: input.nickname.trim(),
-    country: input.country ?? 'unknown',
-    language: input.language ?? 'unknown',
-    email: input.email ?? null,
-    photoURL: input.photoURL ?? null,
-    interests: input.interests ?? [],
-    communication_style: input.communication_style ?? null,
-    stability_score: input.stability_score ?? 0,
-    stage: input.stage ?? 'AI_START',
-    streak_count: input.streak_count ?? 0,
-    last_activity_date: input.last_activity_date ?? null,
-    score_bar_visible: input.score_bar_visible ?? false,
-    ai_penalty_count: input.ai_penalty_count ?? 0,
-    user_penalty_count: input.user_penalty_count ?? 0,
-    user_warning_given: input.user_warning_given ?? false,
-    updated_at: serverTimestamp(),
-  };
-
-  if (!snapshot.exists()) {
-    data.created_at = serverTimestamp();
+  try {
+    return await apiFetch('/users/me');
+  } catch (error) {
+    if (!String(error.message || '').includes('Profile not found')) {
+      throw error;
+    }
   }
 
-  await setDoc(ref, data, { merge: true });
-  return data;
+  try {
+    return await apiFetch('/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        nickname: input.nickname.trim(),
+        country: input.country ?? 'unknown',
+        language: input.language ?? 'unknown',
+        interests: input.interests ?? [],
+        communication_style: input.communication_style ?? null,
+        age: input.age ?? null,
+      }),
+    });
+  } catch (error) {
+    if (!String(error.message || '').includes('Profile already exists')) {
+      throw error;
+    }
+    return apiFetch('/users/me');
+  }
 }
 
 export async function savePendingProfile(input) {
