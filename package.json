@@ -1,0 +1,31 @@
+{
+  "name": "social-events-getter",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "tsc --noEmit --project tsconfig.lint.json",
+    "test": "vitest run",
+    "refresh:events": "tsx scripts/refresh-events.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "cheerio": "^1.2.0",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.468.0",
+    "next": "^15.1.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
