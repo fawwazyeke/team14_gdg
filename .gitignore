@@ -32,6 +32,17 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# Firebase service account key (NEVER commit this)
+serviceAccountKey.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
 
 # typescript
 *.tsbuildinfo
