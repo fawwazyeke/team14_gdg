@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   createAccountWithEmail,
@@ -16,6 +17,7 @@ import {
   nicknameFromEmail,
   savePendingProfile,
   saveUserProfile,
+  userStorageKeys,
 } from '../services/firebaseProfileService';
 
 const AuthContext = createContext(null);
@@ -51,10 +53,20 @@ export function AuthProvider({ children }) {
           await clearPendingProfile(nextUser.uid);
         }
 
-        setProfile(remoteProfile || pendingProfile);
+        const resolved = remoteProfile || pendingProfile;
+        if (resolved?.nickname) {
+          AsyncStorage.setItem(userStorageKeys(nextUser.uid).name, resolved.nickname).catch(() => {});
+        }
+        setProfile(resolved);
       } catch {
         const pendingProfile = await getPendingProfile(nextUser.uid);
-        setProfile(pendingProfile);
+        if (pendingProfile) {
+          setProfile(pendingProfile);
+        } else {
+          // Firestore unreachable and no pending profile — use locally cached nickname so the user isn't asked again
+          const cachedName = await AsyncStorage.getItem(userStorageKeys(nextUser.uid).name).catch(() => null);
+          setProfile(cachedName ? { uid: nextUser.uid, nickname: cachedName, email: nextUser.email } : null);
+        }
         setProfileNotice('Firestore is not reachable right now. Do will keep your profile locally and sync later.');
       } finally {
         setLoading(false);
@@ -93,6 +105,9 @@ export function AuthProvider({ children }) {
           photoURL: user.photoURL,
           interests: extras.interests ?? profile?.interests ?? [],
         };
+
+        // Always persist nickname locally so Firestore downtime doesn't re-prompt the user
+        AsyncStorage.setItem(userStorageKeys(user.uid).name, profileInput.nickname).catch(() => {});
 
         try {
           const savedProfile = await withTimeout(saveUserProfile(profileInput), 3000);
