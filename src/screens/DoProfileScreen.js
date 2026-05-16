@@ -8,6 +8,7 @@ import { useDoTheme } from '../context/DoThemeContext';
 import { MOODS } from '../theme/doTheme';
 import { Card, Chip } from '../components/DoAtoms';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../services/backendClient';
 
 const INTERESTS = [
   { id: 'sports',  label: 'Sports',  emoji: '⚽' },
@@ -48,7 +49,14 @@ export default function DoProfileScreen() {
   const name = profile?.nickname || user?.displayName || 'You';
   const initial = name.charAt(0).toUpperCase();
   const interests = profile?.interests || [];
-  const score = profile?.stability_score ?? 0;
+
+  const [score, setScore] = useState(null);
+
+  React.useEffect(() => {
+    apiFetch('/users/me')
+      .then(data => setScore(data.stability_score ?? 0))
+      .catch(() => setScore(0));
+  }, [user]);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -99,7 +107,7 @@ export default function DoProfileScreen() {
               <Text style={[styles.editIcon, { color: P.inkMuted }]}> ✎</Text>
             </TouchableOpacity>
           )}
-          <Text style={[styles.daysIn, { color: P.inkMuted }]}>Stability score: {score}</Text>
+          <Text style={[styles.daysIn, { color: P.inkMuted }]}>Stability score: {score ?? '…'}</Text>
         </View>
 
         {/* Journey card */}
@@ -107,7 +115,7 @@ export default function DoProfileScreen() {
           <Card P={P} style={{ padding: 18 }}>
             <Text style={[styles.sectionMicro, { color: P.inkMuted }]}>YOUR JOURNEY</Text>
             <View style={{ flexDirection: 'row', gap: 18, marginTop: 10 }}>
-              {[['Score', score], ['Days', '–'], ['Chats', '–']].map(([label, val]) => (
+              {[['Score', score ?? '…'], ['Days', '–'], ['Chats', '–']].map(([label, val]) => (
                 <View key={label} style={{ flex: 1 }}>
                   <Text style={[styles.statVal, { color: P.ink }]}>{val}</Text>
                   <Text style={[styles.statLabel, { color: P.inkSoft }]}>{label}</Text>
