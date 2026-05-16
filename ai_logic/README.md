@@ -18,6 +18,7 @@ ai_logic/
 ├── fallbacks.py          # Safe fallback responses for every output type
 ├── task_logic.py         # Rule-based task recommendation engine (no Gemini)
 ├── friend_matching.py    # Deterministic anonymous friend matching (no Gemini)
+├── moderation.py         # Two-layer content moderation (keyword scan + Gemini classifier)
 ├── examples.py           # Concrete input/output reference examples
 ├── test_cases.py         # Test cases the backend can use to verify behavior
 └── README.md             # This file
@@ -270,57 +271,69 @@ can optionally pass to a prompt builder for richer natural language generation.
 
 | Module | What it does | Gemini needed? |
 |---|---|---|
-| `task_logic.recommend_task` | Scores and picks the best task from the pool | No — result ready to use |
+| `task_logic.recommend_task` | Picks the single best task (simple use case / testing) | No — result ready to use |
+| `task_logic.recommend_tasks` | Picks N diverse tasks for the Mission screen | No — result ready to use |
+| `task_logic.is_ready_for_llm_tasks` | Checks if stability_score ≥ 61 (use Gemini tasks instead) | No |
 | `friend_matching.recommend_friends` | Scores and ranks anonymous friend candidates | No — result ready to use |
+| `prompts.build_task_generation_prompt` | Generates a personalized task via Gemini (post-threshold) | Yes — send to Gemini |
 | `prompts.build_task_recommendation_reason_prompt` | Generates a warm natural language reason | Yes — send to Gemini |
 | `prompts.build_friend_recommendation_reason_prompt` | Generates a natural language match explanation | Yes — send to Gemini |
 
 The rule-based modules give you a correct, fast result.
 Use Gemini on top of them only when you want more natural-sounding language.
 
-### Task recommendation example
+### Task recommendation example (Mission screen)
+
+The app uses `recommend_tasks` (plural) for the Mission screen — it returns N diverse task options that the user can choose from.
+Use `recommend_task` (singular) only for single-task needs like testing or internal logic.
+
+**When stability_score ≥ 61**, switch to Gemini-generated tasks instead of the rule-based pool:
 
 ```python
-from ai_logic.task_logic import recommend_task
+from ai_logic.task_logic import recommend_tasks, is_ready_for_llm_tasks
+from ai_logic.prompts import build_task_generation_prompt
 
-task_result = recommend_task(
-    user_profile={
-        "interests": ["walking"],
-        "social_style": "slow_to_open_up",
-        "loneliness_level": "medium",
-        "task_preference": ["easy", "solo", "low_pressure"],
-    },
-    recent_answers=["I like walking around my neighborhood."],
-    completed_task_ids=[],
-    current_mood="lonely",
-)
+user_profile = {
+    "interests": ["walking"],
+    "social_style": "slow_to_open_up",
+    "loneliness_level": "medium",
+    "task_preference": ["easy", "solo", "low_pressure"],
+}
 
-# task_result looks like:
-# {
-#   "task": {
-#     "id": "task_001",
-#     "title": "Take a 10-minute walk",
-#     "category": "walking",
-#     "difficulty": "easy",
-#     "estimated_minutes": 10,
-#     "tags": ["walking", "outdoor", "active", "low_pressure"],
-#     "pressure_level": "gentle"
-#   },
-#   "reason": "Since you enjoy walking, this felt like a natural and low-pressure way to spend a little time today.",
-#   "score": 0.85
-# }
+if is_ready_for_llm_tasks(stability_score=user.stability_score):
+    # Use Gemini to generate a personalized task
+    prompt = build_task_generation_prompt(user_profile=user_profile, current_mood="lonely")
+    # send to Gemini → parse task JSON
+else:
+    # Use rule-based pool for Mission screen
+    result = recommend_tasks(
+        user_profile=user_profile,
+        recent_answers=["I like walking around my neighborhood."],
+        completed_task_ids=[],
+        current_mood="lonely",
+        count=3,
+    )
+    # result looks like:
+    # {
+    #   "tasks": [
+    #     {"task": {"id": "task_001", "title": "Take a 10-minute walk", ...}, "reason": "...", "score": 0.85},
+    #     {"task": {"id": "task_004", "title": "Make a 5-song playlist", ...}, "reason": "...", "score": 0.60},
+    #     {"task": {"id": "task_007", "title": "Write one sentence about your mood", ...}, "reason": "...", "score": 0.50},
+    #   ],
+    #   "safety_note": "Take your time — there's no rush. Pick whichever feels right for today."
+    # }
 ```
 
-To get a richer Gemini-generated reason, pass the task to the prompt builder:
+To get a richer Gemini-generated reason for a rule-based task:
 
 ```python
 from ai_logic.prompts import build_task_recommendation_reason_prompt
 
 prompt = build_task_recommendation_reason_prompt(
     user_profile=user_profile,
-    selected_task=task_result["task"],
+    selected_task=result["tasks"][0]["task"],
 )
-# Send prompt to Gemini → parse {"reason": "..."} → replace task_result["reason"]
+# Send prompt to Gemini → parse {"reason": "..."} → replace the rule-based reason
 ```
 
 ### Friend matching example
@@ -396,13 +409,108 @@ Do not add `user_id` to the output in your service layer.
 
 ---
 
+## Content moderation
+
+`moderation.py` provides a two-layer content moderation system. Run it on **every** incoming message before passing it to Gemini or delivering it to another user.
+
+**Layer 1 — Fast keyword scan** (no Gemini): flags the message with a category.
+**Layer 2 — Gemini context classifier**: decides the actual action based on full message context.
+
+### Modes
+
+| Mode | When to use |
+|---|---|
+| `"ai"` | User is talking to the chatbot |
+| `"p2p"` | User is sending a message to another user (stricter rules) |
+
+### Actions and score deductions
+
+| Action | Score deduction | Meaning |
+|---|---|---|
+| `allow` | 0 | No issue detected |
+| `warn` | −5 | Mild offensive language |
+| `severe_warn` | −25 | Strong insult or harassment |
+| `crisis` | 0 | Possible self-harm signal — no penalty, trigger support response |
+| `block` | −50 | Criminal intent, hate speech, sexual content, etc. |
+
+### Usage
+
+```python
+from ai_logic.moderation import moderate, get_warning
+from google import genai
+
+client = genai.Client(api_key="YOUR_KEY")
+
+result = moderate(
+    message=user_message,
+    client=client,
+    model_name="gemini-2.0-flash",
+    mode="ai",   # or "p2p"
+)
+
+# result.action       → "allow" | "warn" | "severe_warn" | "crisis" | "block"
+# result.score_delta  → 0 or negative int (apply to user's social score)
+# result.reason       → short English explanation
+
+if result.action == "allow":
+    # proceed normally
+    pass
+elif result.action == "crisis":
+    warning_text = get_warning("crisis", mode="ai")
+    # return crisis support response instead of calling Gemini
+elif result.action in {"warn", "severe_warn"}:
+    warning_text = get_warning(result.action, mode="ai")
+    # show warning to user, deduct score, still respond
+elif result.action == "block":
+    warning_text = get_warning("block", mode="ai")
+    # block the message, deduct score, do not call Gemini
+```
+
+### P2P (user-to-user) moderation
+
+```python
+result = moderate(message=sender_message, client=client, model_name="gemini-2.0-flash", mode="p2p")
+
+if result.action == "block":
+    # Do NOT deliver the message to the recipient
+    from ai_logic.moderation import P2P_BLOCK_NOTICE
+    # Show P2P_BLOCK_NOTICE to the recipient
+    warning_text = get_warning("block", mode="p2p")
+    # Show warning_text to the sender
+```
+
+### Layer 1 keyword categories
+
+| Category | Examples |
+|---|---|
+| `crisis` | "i want to die", "kill myself" — highest priority, skips Layer 2 |
+| `high_risk:violence` | "i will kill you", "shoot you" |
+| `high_risk:child_safety` | "child porn", "grooming" |
+| `high_risk:sexual_exploitation` | "sex trafficking", "buy sex" |
+| `high_risk:cybercrime` | "phishing", "steal password" |
+| `high_risk:weapons` | "build a bomb", "pipe bomb" |
+| `high_risk:hate` | "white supremacy", "hate speech" |
+| `high_risk:drugs` | "buy meth", "drug trafficking" |
+| `high_risk:sexual_content` | "send nudes", "explicit sexual" |
+| `high_risk:crime` | "blackmail", "money laundering" |
+| `high_risk:pii_solicitation` | "send me your phone number", "send me your address" |
+| `high_risk:eating_disorder` | "pro ana", "starve myself" |
+| `insult` | "fuck you", "you are worthless" |
+| `strong_profanity` | "fuck", "shit" (standalone, not directed) |
+| `mild_profanity` | "damn", "crap" — usually passes Layer 2 as "allow" |
+
+The scanner normalizes leetspeak (`f4ck`, `$hit`), spaced-out letters (`f u c k`), and shorthand (`u` → `you`, `ur` → `your`) before matching.
+
+---
+
 ## Notes for backend teammate
 
-- This module has **zero external dependencies** — it is pure Python.
-- Install nothing extra to use it.
-- The module does not call Gemini directly; your Gemini service layer does that.
+- `moderation.py` requires `google-genai` (`from google import genai`). All other files are pure Python with zero external dependencies.
+- Run `moderate()` on every incoming message **before** calling Gemini or delivering to another user.
+- For `crisis` action, return the crisis support response directly — do not call Gemini.
+- Use `recommend_tasks()` (plural) for the Mission screen; `recommend_task()` (singular) is for single-task use cases only.
+- When `is_ready_for_llm_tasks(stability_score)` returns `True` (score ≥ 61), switch from the rule-based task pool to `build_task_generation_prompt` + Gemini.
 - Keep `conversation_history` to the last **10 turns** maximum to avoid token overflow.
-- Always send `CHATBOT_SYSTEM_PROMPT` as the Gemini system instruction, not as part of
-  the user-turn prompt string.
+- Always send `CHATBOT_SYSTEM_PROMPT` as the Gemini system instruction, not as part of the user-turn prompt string.
 - Gemini must return **raw JSON only** — no markdown fences, no extra text.
   Set the response MIME type to `application/json` in your Gemini call if the SDK supports it.
