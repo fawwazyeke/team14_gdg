@@ -25,10 +25,12 @@ from app.schemas import (
 )
 from app.services.stability_service import (
     apply_penalty,
+    apply_moderation_penalty,
     apply_score_event,
     get_streak,
     get_trust_profile,
 )
+from app.services.moderation_service import run_moderation
 from app.database import user_doc
 
 
@@ -141,6 +143,63 @@ def penalty_user_chat(
         content=body.content,
         room_id=body.room_id,
         moderation=body.moderation,
+    )
+
+
+# ── ai_logic 모더레이션 자동 실행 엔드포인트 ─────────────────────────────────
+# 기존 /penalty/* 와 달리, 메시지를 받아 자동으로 모더레이션 → 점수 차감까지 처리.
+
+class ModerateRequest(BaseModel):
+    content: str                       # 검사할 메시지 원문 (필수)
+    room_id: Optional[str] = None      # 유저 채팅 방 ID (user-chat 전용)
+
+
+@router.post("/moderate/ai-chat")
+def moderate_and_penalize_ai_chat(
+    body: ModerateRequest,
+    uid: str = Depends(get_current_uid),
+):
+    """
+    AI 채팅 메시지 모더레이션 + 점수 차감 통합 처리.
+    1. ai_logic.moderation.moderate(mode='ai') 실행
+    2. action에 따라 점수 자동 차감:
+       warn=-5  severe_warn=-25  block=-50  crisis/allow=0
+    3. blocked_ai_messages에 위반 내용 저장
+    4. stability_logs에 기록
+
+    반환: { action, delta, stability_score, stage, warning_msg, ... }
+    """
+    mod = run_moderation(body.content, mode="ai")
+    return apply_moderation_penalty(
+        uid=uid,
+        moderation_result=mod,
+        context="ai_chat",
+        content=body.content,
+    )
+
+
+@router.post("/moderate/user-chat")
+def moderate_and_penalize_user_chat(
+    body: ModerateRequest,
+    uid: str = Depends(get_current_uid),
+):
+    """
+    유저 간 채팅 메시지 모더레이션 + 점수 차감 통합 처리 (p2p 모드 — 더 엄격).
+    1. ai_logic.moderation.moderate(mode='p2p') 실행
+    2. action에 따라 점수 자동 차감:
+       warn=-5  severe_warn=-25  block=-50  crisis/allow=0
+    3. blocked_chat_messages에 위반 내용 저장
+    4. stability_logs에 기록
+
+    반환: { action, delta, stability_score, stage, warning_msg, ... }
+    """
+    mod = run_moderation(body.content, mode="p2p")
+    return apply_moderation_penalty(
+        uid=uid,
+        moderation_result=mod,
+        context="user_chat",
+        content=body.content,
+        room_id=body.room_id,
     )
 
 

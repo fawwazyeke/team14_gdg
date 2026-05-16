@@ -309,3 +309,112 @@ def get_streak(uid: str) -> dict:
         "streak_count": data.get("streak_count", 0),
         "last_activity_date": data.get("last_activity_date"),
     }
+
+
+# ── ai_logic.moderation 연동 페널티 ──────────────────────────────────────────
+
+def apply_moderation_penalty(
+    uid: str,
+    moderation_result: dict,
+    context: str,
+    content: str,
+    room_id: str = None,
+) -> dict:
+    """
+    ai_logic.moderation.moderate() 결과를 받아 점수 차감 + DB 저장.
+
+    moderation_result: moderation_service.run_moderation() 반환값
+      { action, score_delta(음수), reason, warning_msg, is_toxic, severity }
+
+    context: "ai_chat" | "user_chat"
+
+    점수 차감 기준 (ai_logic/moderation.py SCORE_DEDUCTION):
+      warn        : -5
+      severe_warn : -25
+      block       : -50
+      crisis/allow: 0
+
+    기존 apply_penalty()와 달리 cumulative 가중 없음 — 모더레이션이 직접 결정.
+    """
+    action = moderation_result.get("action", "allow")
+    score_delta = float(moderation_result.get("score_delta", 0))  # 이미 음수
+
+    if action == "allow":
+        return {
+            "uid": uid, "context": context, "action": action,
+            "delta": 0.0, "message": moderation_result.get("warning_msg", ""),
+        }
+
+    data, ref = _get_profile(uid)
+    score = float(data.get("stability_score", 0))
+    ai_count  = data.get("ai_penalty_count", 0)
+    user_count = data.get("user_penalty_count", 0)
+
+    new_score = round(score + score_delta, 2)
+    stage = score_to_stage(new_score)
+
+    # 카운트 증가 필드 결정
+    if context == "ai_chat":
+        count_update = {"ai_penalty_count": ai_count + 1}
+    else:
+        count_update = {"user_penalty_count": user_count + 1}
+
+    updates = {"stability_score": new_score, "stage": stage, **count_update}
+
+    # crisis는 점수 차감 없음, 카운트도 올리지 않음
+    if action == "crisis":
+        updates = {}
+        new_score = score
+        stage = score_to_stage(score)
+
+    if updates:
+        ref.update(updates)
+
+    # Firestore 위반 로그 저장
+    violation_doc_id = None
+    if content and action != "allow":
+        mod_dict = {
+            "action": action,
+            "score_delta": score_delta,
+            "reason": moderation_result.get("reason", ""),
+            "severity": moderation_result.get("severity", 0),
+        }
+        if context == "ai_chat":
+            violation_doc_id = _save_ai_violation(
+                uid=uid,
+                content=content,
+                penalty_applied=score_delta,
+                ai_penalty_count=ai_count + 1,
+                moderation=mod_dict,
+            )
+        else:
+            violation_doc_id = _save_user_chat_violation(
+                uid=uid,
+                content=content,
+                room_id=room_id,
+                action=action,
+                penalty_applied=score_delta,
+                user_penalty_count=user_count + 1,
+                moderation=mod_dict,
+            )
+
+    _write_stability_log(
+        uid, score_delta,
+        f"moderation:{context}:{action}",
+        new_score,
+    )
+
+    final_data = ref.get().to_dict() or {}
+    return {
+        "uid":               uid,
+        "context":           context,
+        "action":            action,
+        "delta":             score_delta,
+        "stability_score":   final_data.get("stability_score", new_score),
+        "stage":             final_data.get("stage", stage),
+        "ai_penalty_count":  final_data.get("ai_penalty_count", ai_count),
+        "user_penalty_count":final_data.get("user_penalty_count", user_count),
+        "violation_doc_id":  violation_doc_id,
+        "warning_msg":       moderation_result.get("warning_msg", ""),
+        "message":           moderation_result.get("reason", ""),
+    }
