@@ -1,7 +1,11 @@
 """미션 라우터.
 
-user_profiles/{uid}/missions 서브컬렉션 관리.
-미션 완료 시 stability_score 반영.
+user_profiles/{uid}/missions       ← 미션 목록
+user_profiles/{uid}/mission_records ← 완료 + 인증 기록
+
+미션 종류:
+  기본 미션 (is_ai_generated=False): verification_type = "text" | "photo" 필수
+  AI 미션  (is_ai_generated=True):  verification_type = None, 인증 불필요
 """
 from datetime import datetime
 from typing import List
@@ -16,7 +20,6 @@ from app.schemas import (
     MissionCompleteResponse,
     MissionCreate,
     MissionResponse,
-    RecordResponse,
     RecordWithMissionResponse,
     TodayMissionResponse,
     VALID_DIFFICULTIES,
@@ -48,14 +51,23 @@ def create_mission(body: MissionCreate, uid: str = Depends(get_current_uid)):
 
     if body.difficulty not in VALID_DIFFICULTIES:
         raise HTTPException(status_code=400, detail=f"difficulty must be one of {VALID_DIFFICULTIES}")
-    if body.verification_type not in VALID_VERIFICATION_TYPES:
-        raise HTTPException(status_code=400, detail=f"verification_type must be one of {VALID_VERIFICATION_TYPES}")
+
+    # 기본 미션은 verification_type 필수
+    if not body.is_ai_generated:
+        if not body.verification_type or body.verification_type not in VALID_VERIFICATION_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"기본 미션은 verification_type이 필요합니다: {VALID_VERIFICATION_TYPES}"
+            )
+    # AI 미션은 verification_type 무시 (강제 None)
+    verification_type = None if body.is_ai_generated else body.verification_type
 
     data = {
         "title": body.title,
         "description": body.description,
         "difficulty": body.difficulty,
-        "verification_type": body.verification_type,
+        "verification_type": verification_type,
+        "is_ai_generated": body.is_ai_generated,
         "status": "pending",
         "stability_delta": body.stability_delta,
         "created_at": datetime.utcnow(),
@@ -94,7 +106,8 @@ def get_today_mission(uid: str = Depends(get_current_uid)):
             "title": data["title"],
             "description": data["description"],
             "difficulty": data["difficulty"],
-            "verification_type": data["verification_type"],
+            "verification_type": data.get("verification_type"),
+            "is_ai_generated": data.get("is_ai_generated", False),
             "status": data["status"],
             "stability_delta": data["stability_delta"],
         }
@@ -124,16 +137,37 @@ def complete_mission(
     if mission_data["status"] == "completed":
         raise HTTPException(status_code=400, detail="Mission already completed")
 
+    is_ai = mission_data.get("is_ai_generated", False)
+    verification_type = mission_data.get("verification_type")
+
+    # 기본 미션 인증 검증
+    verified = False
+    if not is_ai:
+        if verification_type == "text":
+            if not body.text or not body.text.strip():
+                raise HTTPException(status_code=400, detail="텍스트 인증이 필요합니다.")
+            verified = True
+        elif verification_type == "photo":
+            if not body.image_url or not body.image_url.strip():
+                raise HTTPException(status_code=400, detail="사진 인증이 필요합니다.")
+            verified = True
+    # AI 미션은 인증 없이 완료
+    else:
+        verified = False
+
     now = datetime.utcnow()
 
     # 미션 완료 처리
     mission_ref.update({"status": "completed", "completed_at": now})
 
-    # 완료 기록 저장
+    # 완료 + 인증 기록 저장
     mission_records_col(uid).add({
         "mission_id": mission_id,
-        "image_url": body.image_url,
-        "text": body.text,
+        "is_ai_generated": is_ai,
+        "verified": verified,
+        "verification_type": verification_type,
+        "text": body.text if verification_type == "text" else None,
+        "image_url": body.image_url if verification_type == "photo" else None,
         "created_at": now,
     })
 
@@ -158,6 +192,7 @@ def complete_mission(
         stability_score=new_score,
         stage=stage,
         total_delta=delta,
+        verified=verified,
     )
 
 
