@@ -1,14 +1,17 @@
 """데이터베이스 레이어 — Firestore.
 
-Firestore 컬렉션 구조:
+Firestore 컬렉션 구조 (성진 담당):
   user_profiles/{uid}                          ← 유저 상태 (stability_score, stage 등)
   user_profiles/{uid}/stability_logs/{id}      ← 점수 변화 로그
   user_profiles/{uid}/missions/{id}            ← 미션
-  user_profiles/{uid}/mission_records/{id}     ← 미션 완료 기록
+  user_profiles/{uid}/mission_records/{id}     ← 미션 완료 + 인증 기록
 
 건드리지 않는 컬렉션 (다른 팀원 담당):
-  users/{uid}    ← fawwaz 로그인/프로필
-  events/{id}    ← fawwaz 이벤트 파이프라인
+  users/{uid}        ← fawwaz 로그인/프로필
+  events/{id}        ← fawwaz 이벤트 파이프라인
+  ai_chat_messages/  ← Han AI 채팅
+  chat_rooms/        ← Han 유저간 채팅
+  friendships/       ← Han 친구 관계
 """
 from app.firebase import get_firestore
 

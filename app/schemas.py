@@ -9,7 +9,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel
 
 VALID_DIFFICULTIES = {"easy", "normal", "hard"}
-VALID_VERIFICATION_TYPES = {"none", "text", "photo"}
+VALID_VERIFICATION_TYPES = {"text", "photo"}  # AI 미션은 None (nullable)
 
 # 스테이지 기준점
 STAGE_THRESHOLDS = {
@@ -88,8 +88,9 @@ class MissionCreate(BaseModel):
     title: str
     description: str
     difficulty: str
-    verification_type: str
+    verification_type: Optional[str] = None  # "text" | "photo" | None (AI 미션)
     stability_delta: int = 0
+    is_ai_generated: bool = False
 
 
 class MissionResponse(BaseModel):
@@ -98,7 +99,8 @@ class MissionResponse(BaseModel):
     title: str
     description: str
     difficulty: str
-    verification_type: str
+    verification_type: Optional[str] = None  # AI 미션은 null
+    is_ai_generated: bool
     status: str
     stability_delta: int
     created_at: datetime
@@ -106,6 +108,8 @@ class MissionResponse(BaseModel):
 
 
 class MissionCompleteRequest(BaseModel):
+    # 기본 미션: verification_type에 따라 text 또는 image_url 필수
+    # AI 미션: 둘 다 nullable
     text: Optional[str] = None
     image_url: Optional[str] = None
 
@@ -116,6 +120,7 @@ class MissionCompleteResponse(BaseModel):
     stability_score: int
     stage: str
     total_delta: int
+    verified: bool  # 인증 여부
 
 
 class TodayMissionData(BaseModel):
@@ -123,7 +128,8 @@ class TodayMissionData(BaseModel):
     title: str
     description: str
     difficulty: str
-    verification_type: str
+    verification_type: Optional[str] = None
+    is_ai_generated: bool
     status: str
     stability_delta: int
 
@@ -150,3 +156,6 @@ class RecordWithMissionResponse(BaseModel):
     image_url: Optional[str] = None
     text: Optional[str] = None
     created_at: datetime
+
+
+# Chat 관련 스키마는 Han 담당 (ai_chat_messages, chat_rooms, friendships)
