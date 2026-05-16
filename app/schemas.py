@@ -1,0 +1,161 @@
+"""Pydantic 스키마 — Firestore 기반.
+
+user_id는 Firebase UID (str) 사용.
+Event/로그인 관련 스키마는 fawwaz 담당이므로 제외.
+"""
+from datetime import datetime
+from typing import Any, List, Optional
+
+from pydantic import BaseModel
+
+VALID_DIFFICULTIES = {"easy", "normal", "hard"}
+VALID_VERIFICATION_TYPES = {"text", "photo"}  # AI 미션은 None (nullable)
+
+# 스테이지 기준점
+STAGE_THRESHOLDS = {
+    "AI_START": 0,
+    "MISSION_PRACTICE": 36,
+    "READY_TO_CONNECT": 61,
+    "CONNECTING": 81,
+}
+
+
+def score_to_stage(score: int) -> str:
+    if score >= 81:
+        return "CONNECTING"
+    if score >= 61:
+        return "READY_TO_CONNECT"
+    if score >= 36:
+        return "MISSION_PRACTICE"
+    return "AI_START"
+
+
+# ── User Profile ───────────────────────────────────────────────────────────────
+
+class UserProfileCreate(BaseModel):
+    nickname: str
+    country: str
+    language: str
+    interests: Optional[List[str]] = None
+    communication_style: Optional[str] = None
+
+
+class UserProfileResponse(BaseModel):
+    uid: str
+    nickname: str
+    country: str
+    language: str
+    stability_score: int
+    stage: str
+    interests: Optional[Any] = None
+    communication_style: Optional[str] = None
+    created_at: datetime
+
+
+class UserStatusResponse(BaseModel):
+    uid: str
+    stability_score: int
+    stage: str
+    # 기능 잠금 해제 플래그
+    can_use_ai_chat: bool        # AI_START 이상 (항상 true)
+    can_do_missions: bool        # MISSION_PRACTICE 이상 (score >= 36)
+    can_recommend_users: bool    # READY_TO_CONNECT 이상 (score >= 61)
+    can_access_events: bool      # READY_TO_CONNECT 이상 (score >= 61)
+    can_chat_with_users: bool    # CONNECTING (score >= 81)
+
+
+# ── Survey (온보딩) ────────────────────────────────────────────────────────────
+
+class SurveyAnswerItem(BaseModel):
+    question_key: str
+    answer: str
+    score: int
+
+
+class SurveyRequest(BaseModel):
+    answers: List[SurveyAnswerItem]
+
+
+class SurveyResponse(BaseModel):
+    uid: str
+    stability_score: int
+    stage: str
+
+
+# ── Mission ────────────────────────────────────────────────────────────────────
+
+class MissionCreate(BaseModel):
+    title: str
+    description: str
+    difficulty: str
+    verification_type: Optional[str] = None  # "text" | "photo" | None (AI 미션)
+    stability_delta: int = 0
+    is_ai_generated: bool = False
+
+
+class MissionResponse(BaseModel):
+    id: str
+    uid: str
+    title: str
+    description: str
+    difficulty: str
+    verification_type: Optional[str] = None  # AI 미션은 null
+    is_ai_generated: bool
+    status: str
+    stability_delta: int
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+class MissionCompleteRequest(BaseModel):
+    # 기본 미션: verification_type에 따라 text 또는 image_url 필수
+    # AI 미션: 둘 다 nullable
+    text: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class MissionCompleteResponse(BaseModel):
+    mission_id: str
+    status: str
+    stability_score: int
+    stage: str
+    total_delta: int
+    verified: bool  # 인증 여부
+
+
+class TodayMissionData(BaseModel):
+    id: str
+    title: str
+    description: str
+    difficulty: str
+    verification_type: Optional[str] = None
+    is_ai_generated: bool
+    status: str
+    stability_delta: int
+
+
+class TodayMissionResponse(BaseModel):
+    mission: Optional[TodayMissionData] = None
+
+
+# ── Mission Record ─────────────────────────────────────────────────────────────
+
+class RecordResponse(BaseModel):
+    id: str
+    uid: str
+    mission_id: str
+    image_url: Optional[str] = None
+    text: Optional[str] = None
+    created_at: datetime
+
+
+class RecordWithMissionResponse(BaseModel):
+    id: str
+    mission_id: str
+    mission_title: str
+    image_url: Optional[str] = None
+    text: Optional[str] = None
+    created_at: datetime
+
+
+# Chat 관련 스키마는 Han 담당 (ai_chat_messages, chat_rooms, friendships)

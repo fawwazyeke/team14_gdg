@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { GiftedChat, Bubble } from 'react-native-gifted-chat';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 import { sendMessage } from '../services/chatService';
 
 const BOT_USER = {
@@ -11,6 +12,7 @@ const BOT_USER = {
 };
 
 const ChatScreen = () => {
+  const { profile } = useAuth();
   const [messages, setMessages] = useState([
     {
       _id: 1,
@@ -20,18 +22,38 @@ const ChatScreen = () => {
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState('');
+  const historyRef = useRef([]);
+
+  const userProfile = {
+    interests: profile?.interests || [],
+    nickname: profile?.nickname || '',
+  };
 
   const onSend = useCallback(async (newMessages = []) => {
+    const userMsg = newMessages[0];
     setMessages(prev => GiftedChat.append(prev, newMessages));
+    setError('');
     setIsTyping(true);
 
+    historyRef.current = [
+      ...historyRef.current,
+      { role: 'user', content: userMsg.text },
+    ].slice(-20);
+
     try {
-      const botMessage = await sendMessage(newMessages[0].text);
+      const botMessage = await sendMessage(userMsg.text, historyRef.current, userProfile);
+      historyRef.current = [
+        ...historyRef.current,
+        { role: 'assistant', content: botMessage.text },
+      ].slice(-20);
       setMessages(prev => GiftedChat.append(prev, [botMessage]));
+    } catch (err) {
+      setError('Could not reach the AI. Make sure the backend is running.');
     } finally {
       setIsTyping(false);
     }
-  }, []);
+  }, [profile]);
 
   const renderBubble = (props) => (
     <Bubble
@@ -49,9 +71,10 @@ const ChatScreen = () => {
 
   return (
     <View style={styles.container}>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
       <GiftedChat
         messages={messages}
-        onSend={messages => onSend(messages)}
+        onSend={msgs => onSend(msgs)}
         user={{ _id: 1 }}
         renderBubble={renderBubble}
         isTyping={isTyping}
@@ -63,9 +86,13 @@ const ChatScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  container: { flex: 1, backgroundColor: colors.background },
+  error: {
+    backgroundColor: '#b3261e',
+    color: '#fff',
+    fontSize: 13,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
 });
 
