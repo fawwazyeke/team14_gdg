@@ -6,7 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDoTheme } from '../context/DoThemeContext';
-import { DawnHorizon, Card } from '../components/DoAtoms';
+import { Card } from '../components/DoAtoms';
 import { getDailyMissions, completeMission } from '../services/missionsService';
 
 function timeGreeting() {
@@ -19,10 +19,21 @@ function timeGreeting() {
 
 const CAT_EMOJI = { social: '✉️', physical: '☀️', explore: '🍵' };
 const CAT_LABELS = { social: 'Social', physical: 'Body', explore: 'Explore' };
+const CAT_TINT = {
+  social: '#E3ECE3',
+  physical: null,
+  explore: '#F0E5DD',
+};
 
 function MissionCard({ mission, done, P, onComplete }) {
   const emoji = CAT_EMOJI[mission.category] || '🌱';
   const catLabel = CAT_LABELS[mission.category] || 'Mission';
+  const tint = CAT_TINT[mission.category] || P.wash;
+  const accent = mission.category === 'social'
+    ? P.accentDeep
+    : mission.category === 'explore'
+      ? P.primaryDeep
+      : P.primaryDeep;
 
   if (done) {
     return (
@@ -42,12 +53,12 @@ function MissionCard({ mission, done, P, onComplete }) {
     <Card P={P} style={{ overflow: 'hidden' }}>
       {/* tinted band */}
       <LinearGradient
-        colors={[P.wash, P.surface]}
+        colors={[tint, P.surface]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
         style={styles.cardBand}
       >
         <Text style={{ fontSize: 20 }}>{emoji}</Text>
-        <Text style={[styles.catLabel, { color: P.primaryDeep }]}>{catLabel.toUpperCase()}</Text>
+        <Text style={[styles.catLabel, { color: accent }]}>{catLabel.toUpperCase()}</Text>
       </LinearGradient>
       <View style={styles.cardBody}>
         <Text style={[styles.missionTitle, { color: P.ink }]}>{mission.title}</Text>
@@ -115,10 +126,6 @@ export default function DoMissionsScreen() {
     }
   };
 
-  const doneCount = Object.keys(completed).length;
-  const total = missions.length || 3;
-  const progress = missions.length ? doneCount / total : 0;
-
   return (
     <View style={[styles.root, { backgroundColor: P.bg }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
@@ -127,24 +134,6 @@ export default function DoMissionsScreen() {
           <Text style={[styles.greeting, { color: P.inkMuted }]}>{timeGreeting()}.</Text>
           <Text style={[styles.screenTitle, { color: P.ink }]}>Today's bridges</Text>
           <Text style={[styles.screenSub, { color: P.inkSoft }]}>Small steps towards connection.</Text>
-        </View>
-
-        {/* Horizon progress card */}
-        <View style={styles.horizonWrap}>
-          <Card P={P} style={{ overflow: 'hidden' }}>
-            <DawnHorizon progress={progress} P={P} height={130} style={{ borderRadius: 0 }} />
-            <View style={styles.horizonFooter}>
-              <Text style={[styles.horizonLabel, { color: P.ink }]}>
-                {doneCount === 0 && "Let's begin gently."}
-                {doneCount === 1 && "One bridge crossed."}
-                {doneCount === 2 && "Almost there."}
-                {doneCount >= 3 && "Today is yours."}
-              </Text>
-              <Text style={[styles.horizonSub, { color: P.inkSoft }]}>
-                {doneCount} of {total} done · no rush
-              </Text>
-            </View>
-          </Card>
         </View>
 
         {/* Verification box */}
@@ -221,11 +210,6 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 13, fontWeight: '500', marginBottom: 6 },
   screenTitle: { fontSize: 30, fontWeight: '600', letterSpacing: -0.5 },
   screenSub: { fontSize: 15, marginTop: 6, lineHeight: 22 },
-
-  horizonWrap: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
-  horizonFooter: { padding: 16 },
-  horizonLabel: { fontSize: 18, fontWeight: '600', letterSpacing: -0.2 },
-  horizonSub: { fontSize: 13, marginTop: 4 },
 
   missionList: { paddingHorizontal: 20, paddingTop: 16, gap: 14 },
   cardBand: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },

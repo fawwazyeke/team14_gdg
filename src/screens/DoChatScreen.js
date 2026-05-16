@@ -6,7 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDoTheme } from '../context/DoThemeContext';
-import { CompanionOrb, PulseDot } from '../components/DoAtoms';
+import { CompanionSketch, PulseDot } from '../components/DoAtoms';
 import { useAuth } from '../context/AuthContext';
 import { sendMessage } from '../services/chatService';
 
@@ -54,7 +54,7 @@ export default function DoChatScreen() {
   const renderItem = ({ item }) => {
     const isMe = item.from === 'me';
     return (
-      <View style={[styles.bubbleRow, isMe && { justifyContent: 'flex-end' }]}>
+      <View style={[styles.bubbleRow, isMe ? { justifyContent: 'flex-end' } : { maxWidth: '90%' }]}>
         {isMe ? (
           <LinearGradient
             colors={[P.grad[0], P.grad[1]]}
@@ -64,9 +64,12 @@ export default function DoChatScreen() {
             <Text style={[styles.bubbleText, { color: '#fff' }]}>{item.text}</Text>
           </LinearGradient>
         ) : (
-          <View style={[styles.bubble, styles.bubbleAi, { backgroundColor: P.surface, borderColor: P.line }]}>
-            <Text style={[styles.bubbleText, { color: P.ink }]}>{item.text}</Text>
-          </View>
+          <>
+            <CompanionSketch size={34} P={P} animated={false} style={styles.messageAvatar} />
+            <View style={[styles.bubble, styles.bubbleAi, { backgroundColor: P.surface, borderColor: P.line }]}>
+              <Text style={[styles.bubbleText, { color: P.ink }]}>{item.text}</Text>
+            </View>
+          </>
         )}
       </View>
     );
@@ -79,12 +82,13 @@ export default function DoChatScreen() {
         colors={[P.wash + 'CC', P.bg]}
         style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: P.line }]}
       >
-        <CompanionOrb size={52} P={P} animated />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: P.ink }]}>Your Companion</Text>
+        <View>
+          <Text style={[styles.wordmark, { color: P.ink }]}>Do</Text>
+        </View>
+        <View style={styles.statusWrap}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <PulseDot P={P} />
-            <Text style={[styles.headerSub, { color: P.inkSoft }]}>Here whenever you need.</Text>
+            <Text style={[styles.headerSub, { color: P.inkSoft }]}>Here whenever you need</Text>
           </View>
         </View>
       </LinearGradient>
@@ -99,6 +103,7 @@ export default function DoChatScreen() {
         data={messages}
         keyExtractor={item => item.id}
         renderItem={renderItem}
+        ListHeaderComponent={<Text style={[styles.dayLabel, { color: P.inkMuted }]}>This morning</Text>}
         contentContainerStyle={styles.messageList}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
       />
@@ -145,14 +150,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingBottom: 16,
     borderBottomWidth: 0.5,
   },
-  headerTitle: { fontSize: 18, fontWeight: '600', letterSpacing: -0.3 },
+  wordmark: { fontSize: 22, fontWeight: '600', letterSpacing: -0.4 },
+  statusWrap: { flex: 1, alignItems: 'flex-end' },
   headerSub: { fontSize: 13, fontWeight: '400' },
 
   errorBanner: { backgroundColor: '#b3261e', paddingHorizontal: 16, paddingVertical: 8 },
   errorText: { color: '#fff', fontSize: 13 },
 
   messageList: { padding: 18, paddingBottom: 8, gap: 10 },
-  bubbleRow: { flexDirection: 'row', marginBottom: 10 },
+  dayLabel: {
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 10 },
+  messageAvatar: { marginBottom: -4 },
   bubble: { maxWidth: '78%', padding: 14, borderRadius: 22 },
   bubbleMe: { borderTopRightRadius: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
   bubbleAi: { borderTopLeftRadius: 6, borderWidth: 0.5, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2 },

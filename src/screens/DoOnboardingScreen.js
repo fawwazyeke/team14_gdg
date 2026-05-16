@@ -8,9 +8,9 @@ import { useFonts } from 'expo-font';
 import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces';
 import { buildPalette } from '../theme/doTheme';
-import { PrimaryButton, GhostButton, Chip, ProgressDots } from '../components/DoAtoms';
+import { CompanionSketch, PrimaryButton, Chip, ProgressDots } from '../components/DoAtoms';
 
-const P = buildPalette('dawn', 'light');
+const P = buildPalette('dawn', 'dark');
 
 const INTERESTS = [
   { id: 'sports',  label: 'Sports',  emoji: '⚽' },
@@ -30,18 +30,10 @@ function StepWelcome({ onNext }) {
   return (
     <View style={styles.stepContainer}>
       <View style={styles.welcomeCenter}>
-        {/* Sunrise orb */}
-        <LinearGradient
-          colors={[P.horizon[0], P.horizon[1], P.horizon[2], P.horizon[3]]}
-          locations={[0, 0.55, 0.8, 1]}
-          style={styles.sunriseOrb}
-        >
-          <LinearGradient
-            colors={['#FFF7DC', P.primary]}
-            style={styles.sunCore}
-          />
-          <View style={styles.horizonLine} />
-        </LinearGradient>
+        <View style={styles.companionWrap}>
+          <View style={[styles.companionHalo, { backgroundColor: P.primary + '33' }]} />
+          <CompanionSketch size={130} P={P} animated />
+        </View>
 
         <Text style={styles.wordmark}>Do</Text>
         <Text style={styles.welcomeSubtitle}>
@@ -247,18 +239,12 @@ const styles = StyleSheet.create({
   stepContainer: { flex: 1, paddingTop: 60, paddingBottom: 40 },
 
   welcomeCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  sunriseOrb: {
-    width: 110, height: 110, borderRadius: 55, overflow: 'hidden',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 30,
-    shadowColor: '#E08A5F', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 24,
+  companionWrap: {
+    width: 150, height: 150, alignItems: 'center', justifyContent: 'center', marginBottom: 28,
   },
-  sunCore: {
-    width: 56, height: 56, borderRadius: 28,
-    position: 'absolute', top: '30%', left: '50%', marginLeft: -28,
-  },
-  horizonLine: {
-    position: 'absolute', left: 0, right: 0, top: '72%', height: 1,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+  companionHalo: {
+    position: 'absolute', width: 150, height: 150, borderRadius: 75,
+    shadowColor: '#E08A5F', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.24, shadowRadius: 24,
   },
   wordmark: {
     fontFamily: 'Fraunces_400Regular', fontSize: 88, color: P.ink,

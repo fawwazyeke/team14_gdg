@@ -1,8 +1,72 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Animated, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Animated, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Ellipse, G } from 'react-native-svg';
 import { radii } from '../theme/doTheme';
+
+const companionOutline = require('../../assets/do-design/companion-outline.png');
+const companionFilled = require('../../assets/do-design/companion-filled.png');
+const relateMe = require('../../assets/do-design/relate-me.png');
+const relateOther = require('../../assets/do-design/relate-other.png');
+const relateNotes = require('../../assets/do-design/relate-notes.png');
+
+const sketchSources = {
+  companion: companionOutline,
+  companionFilled,
+  me: relateMe,
+  other: relateOther,
+  notes: relateNotes,
+};
+
+// ─── Hand-drawn image glyphs from the latest design ─────────────
+export function SketchGlyph({ kind = 'companion', size = 44, color, animated = false, style }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!animated) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.04, duration: 2500, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1.0, duration: 2500, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [animated, scale]);
+
+  return (
+    <Animated.View style={[{ width: size, height: size, transform: [{ scale }] }, style]}>
+      <Image
+        source={sketchSources[kind] || companionOutline}
+        resizeMode="contain"
+        style={{ width: size, height: size, tintColor: color }}
+      />
+    </Animated.View>
+  );
+}
+
+export function CompanionSketch({ size = 84, P, animated = true, filled = false, style }) {
+  return (
+    <SketchGlyph
+      kind={filled ? 'companionFilled' : 'companion'}
+      size={size}
+      color={P.primary}
+      animated={animated}
+      style={style}
+    />
+  );
+}
+
+export function RelateAvatar({ size = 44, P, kind = 'notes', tint }) {
+  return (
+    <SketchGlyph
+      kind={kind}
+      size={size}
+      color={tint || P.primary}
+      animated={false}
+    />
+  );
+}
 
 // ─── Companion Orb ──────────────────────────────────────────────
 export function CompanionOrb({ size = 84, P, animated = true }) {

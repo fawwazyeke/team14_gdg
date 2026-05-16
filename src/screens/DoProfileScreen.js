@@ -30,6 +30,7 @@ function MoodSwatch({ id, m, active, onPress, P }) {
         colors={[m.grad[0], m.grad[1], m.grad[2]]}
         style={[styles.swatch, active && { transform: [{ scale: 1.08 }] }]}
       >
+        <View style={[styles.swatchAccent, { backgroundColor: m.accent, borderColor: P.bg }]} />
         {active && (
           <View style={[styles.swatchCheck, { borderColor: P.bg }]}>
             <View style={[styles.swatchDot, { backgroundColor: P.bg }]} />
@@ -179,7 +180,7 @@ export default function DoProfileScreen() {
           <Card P={P} style={{ overflow: 'hidden' }}>
             {[
               ['Notifications', 'A gentle morning nudge'],
-              ['How Bridger works', 'The thinking behind the app'],
+              ['How Do works', 'The thinking behind the app'],
               ['Privacy', 'Your chats stay on this device'],
             ].map((row, i, arr) => (
               <View key={row[0]} style={[styles.settingsRow, {
@@ -245,6 +246,7 @@ const styles = StyleSheet.create({
   swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
   swatchBtn: { alignItems: 'center', gap: 6, width: '18%' },
   swatch: { width: 46, height: 46, borderRadius: 23 },
+  swatchAccent: { position: 'absolute', right: -2, bottom: -2, width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
   swatchCheck: { position: 'absolute', top: -2, right: -2, width: 14, height: 14, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   swatchDot: { width: 6, height: 6, borderRadius: 3 },
   swatchName: { fontSize: 10, fontWeight: '500' },
