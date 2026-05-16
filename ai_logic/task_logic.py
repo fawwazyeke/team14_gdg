@@ -13,6 +13,27 @@ from typing import Optional
 
 
 # ---------------------------------------------------------------------------
+# Profile unlock threshold
+# When a user's stability_score reaches READY_TO_CONNECT (61), their profile is
+# considered well-defined enough to switch from rule-based task selection to
+# LLM-generated tasks.  The backend checks this before deciding which path to
+# take (recommend_tasks vs. build_task_generation_prompt + Gemini call).
+# ---------------------------------------------------------------------------
+
+STABILITY_SCORE_LLM_THRESHOLD: int = 61  # mirrors STAGE_THRESHOLDS["READY_TO_CONNECT"]
+
+
+def is_ready_for_llm_tasks(stability_score: int) -> bool:
+    """Return True when stability_score has reached READY_TO_CONNECT (>= 61).
+
+    At this stage the user's profile is rich enough for LLM-generated tasks.
+    Use build_task_generation_prompt (prompts.py) + Gemini.
+    Below it, fall back to recommend_tasks().
+    """
+    return stability_score >= STABILITY_SCORE_LLM_THRESHOLD
+
+
+# ---------------------------------------------------------------------------
 # Default task pool
 # ---------------------------------------------------------------------------
 
@@ -216,17 +237,6 @@ _DEFAULT_TASKS: list[dict] = [
         "tags": ["cleaning", "routine", "solo", "low_pressure"],
         "pressure_level": "gentle",
     },
-    {
-        "id": "task_020",
-        "title": "Throw away 3 things you don't need",
-        "description": "Look around and find 3 things to toss — wrappers, old notes, anything.",
-        "category": "cleaning",
-        "difficulty": "easy",
-        "estimated_minutes": 5,
-        "tags": ["cleaning", "routine", "solo", "low_pressure"],
-        "pressure_level": "gentle",
-    },
-
     # --- Entertainment / Movies / Reading ---
     {
         "id": "task_021",
@@ -726,8 +736,9 @@ def recommend_task(
     """
     Recommend the single best-fitting task from the default pool.
 
-    Note: The app's Mission screen uses recommend_tasks() to show 3 options.
-    Use this function when you only need one task (e.g. chat-based suggestion).
+    Note: The app uses a dedicated Mission screen — use recommend_tasks() (plural)
+    for that screen.  Use this function only when a single task is needed outside
+    the Mission screen (e.g. internal logic or testing).
 
     Returns:
         {"task": {...}, "reason": "...", "score": 0.87}
