@@ -1,87 +1,87 @@
-const MOCK_EVENTS = [
-  {
-    id: '1',
-    title: 'Weekend Jogging Club',
-    category: 'sports',
-    date: 'Sat, 9:00 AM',
-    location: 'Central Park',
-    description: 'A friendly group run for all fitness levels. No experience needed!',
-    emoji: '🏃',
-  },
-  {
-    id: '2',
-    title: 'Board Game Night',
-    category: 'games',
-    date: 'Tue, 7:00 PM',
-    location: 'Geeky Cafe',
-    description: 'Bring your friends or come solo and make new ones!',
-    emoji: '🎲',
-  },
-  {
-    id: '3',
-    title: 'Indie Rock Live Show',
-    category: 'music',
-    date: 'Fri, 8:00 PM',
-    location: 'The Basement',
-    description: 'Three local bands playing original music. Entry is free.',
-    emoji: '🎸',
-  },
-  {
-    id: '4',
-    title: 'Photography Walk',
-    category: 'art',
-    date: 'Sun, 10:00 AM',
-    location: 'Riverside',
-    description: 'Explore the city through your lens with a small group.',
-    emoji: '📷',
-  },
-  {
-    id: '5',
-    title: 'Soccer Watch Party',
-    category: 'sports',
-    date: 'Wed, 6:00 PM',
-    location: "O'Brien's Pub",
-    description: "Champions League semifinal — free snacks, great crowd.",
-    emoji: '⚽',
-  },
-  {
-    id: '6',
-    title: 'Trivia Night',
-    category: 'games',
-    date: 'Thu, 8:00 PM',
-    location: 'The Library Bar',
-    description: 'Test your knowledge and meet curious people.',
-    emoji: '🧠',
-  },
-  {
-    id: '7',
-    title: 'Open Mic Night',
-    category: 'music',
-    date: 'Sat, 7:00 PM',
-    location: 'The Loft',
-    description: 'Perform or just enjoy — all genres welcome.',
-    emoji: '🎤',
-  },
-  {
-    id: '8',
-    title: 'Watercolor Workshop',
-    category: 'art',
-    date: 'Sun, 2:00 PM',
-    location: 'Community Center',
-    description: 'Learn the basics of watercolor in a relaxed group setting.',
-    emoji: '🎨',
-  },
+import { apiFetch } from './backendClient';
+
+export const EVENT_CATEGORIES = [
+  'All',
+  'Language Exchange',
+  'Games & Hobbies',
+  'Outdoor & Sports',
+  'Food & Cafe',
+  'Culture',
+  'Tech & Learning',
+  'Community Events',
 ];
 
-export const EVENT_CATEGORIES = ['All', 'Sports', 'Games', 'Music', 'Art'];
+export async function getEvents({ city, category } = {}) {
+  const params = new URLSearchParams({
+    min_social_score: '3',
+  });
 
-/**
- * Fetches the list of curated events.
- * TODO: Replace with real backend / scraped data API call.
- *
- * @returns {Promise<Array>} - List of event objects
- */
-export async function getEvents() {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return MOCK_EVENTS;
+  if (city) {
+    params.set('city', city);
+  }
+  if (category && category !== 'All') {
+    params.set('category', category);
+  }
+
+  const events = await apiFetch(`/events?${params.toString()}`);
+  return events.map(normalizeEventForApp);
+}
+
+function normalizeEventForApp(event) {
+  const date = formatDate(event.start_at);
+  const location = event.venue_name || event.address || cityLabel(event.city);
+
+  return {
+    id: event.id,
+    title: event.title,
+    category: event.category,
+    date,
+    location,
+    description: event.summary || event.social_reason || event.description,
+    emoji: categoryEmoji(event.category),
+    city: event.city,
+    sourceUrl: event.source_url,
+    socialScore: event.social_score,
+    socialReason: event.social_reason,
+  };
+}
+
+function formatDate(value) {
+  if (!value) {
+    return 'Date TBA';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function cityLabel(city) {
+  if (city === 'seoul') {
+    return 'Seoul';
+  }
+  if (city === 'tokyo') {
+    return 'Tokyo';
+  }
+  return 'Location TBA';
+}
+
+function categoryEmoji(category) {
+  const normalized = category.toLowerCase();
+  if (normalized.includes('language')) return '💬';
+  if (normalized.includes('game')) return '🎲';
+  if (normalized.includes('outdoor') || normalized.includes('sport')) return '🌿';
+  if (normalized.includes('food') || normalized.includes('cafe')) return '☕';
+  if (normalized.includes('culture')) return '🏛️';
+  if (normalized.includes('tech')) return '💡';
+  return '📍';
 }

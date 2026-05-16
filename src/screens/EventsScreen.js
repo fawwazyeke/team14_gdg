@@ -28,12 +28,21 @@ const EventsScreen = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    getEvents().then(data => {
-      setEvents(data);
-      setLoading(false);
-    });
+    setLoading(true);
+    setError('');
+    getEvents()
+      .then(data => {
+        setEvents(data);
+      })
+      .catch(() => {
+        setError('Could not load events. Start the backend and try again.');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const filtered = activeCategory === 'All'
@@ -64,6 +73,8 @@ const EventsScreen = () => {
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+      ) : error ? (
+        <Text style={styles.emptyText}>{error}</Text>
       ) : (
         <FlatList
           data={filtered}
