@@ -5,9 +5,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { DoThemeProvider } from './src/context/DoThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
-import OnboardingScreen from './src/screens/OnboardingScreen';
+import DoOnboardingScreen from './src/screens/DoOnboardingScreen';
 import { userStorageKeys } from './src/services/firebaseProfileService';
 import { ensureBackendProfile, submitOnboardingSurvey } from './src/services/onboardingSurveyService';
 import { colors } from './src/theme/colors';
@@ -84,7 +85,7 @@ function AppGate() {
       ) : hasOnboarded ? (
         <AppNavigator />
       ) : (
-        <OnboardingScreen initialName={profile?.nickname || ''} onComplete={handleOnboardingComplete} />
+        <DoOnboardingScreen initialName={profile?.nickname || ''} onComplete={handleOnboardingComplete} />
       )}
     </SafeAreaProvider>
   );
@@ -107,7 +108,9 @@ const styles = StyleSheet.create({
 export default function App() {
   return (
     <AuthProvider>
-      <AppGate />
+      <DoThemeProvider>
+        <AppGate />
+      </DoThemeProvider>
     </AuthProvider>
   );
 }
