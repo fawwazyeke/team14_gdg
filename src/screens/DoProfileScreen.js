@@ -9,6 +9,7 @@ import { MOODS } from '../theme/doTheme';
 import { Card, Chip } from '../components/DoAtoms';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/backendClient';
+import { saveUserProfile } from '../services/firebaseProfileService';
 
 const INTERESTS = [
   { id: 'sports',  label: 'Sports',  emoji: '⚽' },
@@ -49,7 +50,32 @@ export default function DoProfileScreen() {
 
   const name = profile?.nickname || user?.displayName || 'You';
   const initial = name.charAt(0).toUpperCase();
-  const interests = profile?.interests || [];
+
+  // Local interests state so toggling is instant
+  const [interests, setInterests] = useState(profile?.interests || []);
+  const [interestSaving, setInterestSaving] = useState(false);
+
+  const toggleInterest = async (id) => {
+    const updated = interests.includes(id)
+      ? interests.filter(i => i !== id)
+      : [...interests, id];
+    setInterests(updated);
+    setInterestSaving(true);
+    try {
+      await saveUserProfile({
+        uid: user.uid,
+        nickname: name,
+        email: user?.email ?? null,
+        photoURL: user?.photoURL ?? null,
+        interests: updated,
+      });
+      showToast('Saved');
+    } catch {
+      showToast('Could not save');
+    } finally {
+      setInterestSaving(false);
+    }
+  };
 
   const [score, setScore] = useState(null);
 
@@ -61,12 +87,16 @@ export default function DoProfileScreen() {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
-  const [savedToast, setSavedToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 1800);
+  };
 
   const save = () => {
     setEditing(false);
-    setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 1800);
+    showToast('✓ Saved');
   };
 
   return (
@@ -168,7 +198,14 @@ export default function DoProfileScreen() {
           <Text style={[styles.sectionSub, { color: P.inkSoft }]}>Tap to change anytime.</Text>
           <View style={styles.chipsWrap}>
             {INTERESTS.map(it => (
-              <Chip key={it.id} P={P} active={interests.includes(it.id)} onPress={() => {}} icon={it.emoji}>
+              <Chip
+                key={it.id}
+                P={P}
+                active={interests.includes(it.id)}
+                onPress={() => toggleInterest(it.id)}
+                icon={it.emoji}
+                disabled={interestSaving}
+              >
                 {it.label}
               </Chip>
             ))}
@@ -201,9 +238,9 @@ export default function DoProfileScreen() {
         </View>
       </ScrollView>
 
-      {savedToast && (
+      {toastMsg && (
         <View style={[styles.toast, { backgroundColor: P.ink }]}>
-          <Text style={{ color: P.bg, fontSize: 13, fontWeight: '500' }}>✓ Saved</Text>
+          <Text style={{ color: P.bg, fontSize: 13, fontWeight: '500' }}>{toastMsg}</Text>
         </View>
       )}
     </View>
