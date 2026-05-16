@@ -209,6 +209,11 @@ export default function DoLoginScreen({ initialMode = 'login' }) {
 
 function friendlyError(e) {
   const code = String(e?.code || e?.message || '');
+  if (code.includes('auth/unauthorized-domain')) return 'This Vercel domain is not authorized in Firebase Authentication settings.';
+  if (code.includes('auth/invalid-api-key') || code.includes('auth/api-key-not-valid')) return 'Firebase API key is missing or incorrect in the Vercel environment variables.';
+  if (code.includes('auth/operation-not-allowed')) return 'This sign-in method is disabled in Firebase Authentication.';
+  if (code.includes('auth/popup-blocked')) return 'The Google sign-in popup was blocked by the browser.';
+  if (code.includes('auth/popup-closed-by-user')) return 'Google sign-in was closed before it finished.';
   if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password')) return 'Email or password is incorrect.';
   if (code.includes('auth/email-already-in-use')) return 'That email already has an account. Try logging in.';
   if (code.includes('auth/weak-password')) return 'Use at least 6 characters for your password.';
