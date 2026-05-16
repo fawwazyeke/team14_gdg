@@ -3,7 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import auth, users, survey, missions, chat, matching, events, settings
 
-app = FastAPI(title="Social Companion API")
+app = FastAPI(
+    title="Social Companion API",
+    swagger_ui_parameters={
+        "defaultModelsExpandDepth": -1,
+        "docExpansion": "none",
+    },
+)
 
 app.add_middleware(
     CORSMiddleware,
