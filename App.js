@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -11,6 +11,16 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import { userStorageKeys } from './src/services/firebaseProfileService';
 import { ensureBackendProfile, submitOnboardingSurvey } from './src/services/onboardingSurveyService';
 import { colors } from './src/theme/colors';
+
+function FirebaseErrorBanner() {
+  const { profileNotice } = useAuth();
+  if (!profileNotice) return null;
+  return (
+    <View style={styles.errorBanner}>
+      <Text style={styles.errorBannerText}>⚠ {profileNotice}</Text>
+    </View>
+  );
+}
 
 function AppGate() {
   const { user, profile, loading, needsProfile, completeProfile } = useAuth();
@@ -68,6 +78,7 @@ function AppGate() {
 
   return (
     <SafeAreaProvider>
+      <FirebaseErrorBanner />
       {!user || needsProfile ? (
         <LoginScreen />
       ) : hasOnboarded ? (
@@ -78,6 +89,20 @@ function AppGate() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  errorBanner: {
+    backgroundColor: '#b3261e',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  errorBannerText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+});
 
 export default function App() {
   return (
