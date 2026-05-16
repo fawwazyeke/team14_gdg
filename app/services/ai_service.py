@@ -7,33 +7,17 @@ Firestore 필드 → ai_logic user_profile 매핑:
   social_style        → social_style       (AI 채팅 응답에서 점진적으로 학습)
   loneliness_level    → loneliness_level   (AI 채팅 응답에서 점진적으로 학습)
   task_preference     → task_preference    (AI 채팅 응답에서 점진적으로 학습)
+
+대화 메모리 (SummaryBufferMemory):
+  user_profiles/{uid}.ai_memory: { history: [...], summary: "..." }
+  - 최근 6턴은 원문 유지, 10턴 초과 시 오래된 대화를 Gemini로 자동 요약·압축
+  - 매 채팅 후 Firestore에 저장 → 앱 재시작/세션 종료 후에도 이어서 대화 가능
 """
 
-import json
-import os
-import re
-from typing import Optional
-
-from dotenv import load_dotenv
-
+from ai_logic.memory import SummaryBufferMemory
 from ai_logic.prompts import CHATBOT_SYSTEM_PROMPT, build_chat_prompt
 from app.database import user_doc
-
-load_dotenv()
-
-_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-
-
-def _get_client():
-    """google.genai.Client 생성. API 키 없으면 None."""
-    if not _GEMINI_API_KEY:
-        return None
-    try:
-        from google import genai
-        return genai.Client(api_key=_GEMINI_API_KEY)
-    except Exception:
-        return None
+from app.services.gemini_service import generate_json
 
 
 # ── 프로필 변환 ───────────────────────────────────────────────────────────────
@@ -91,6 +75,21 @@ def update_profile_from_hint(uid: str, hint: dict) -> None:
         user_doc(uid).update(updates)
 
 
+# ── 메모리 로드/저장 ──────────────────────────────────────────────────────────
+
+def _load_memory(uid: str) -> SummaryBufferMemory:
+    """Firestore user_profiles/{uid}.ai_memory → SummaryBufferMemory 복원."""
+    snap = user_doc(uid).get()
+    if not snap.exists:
+        return SummaryBufferMemory()
+    return SummaryBufferMemory.from_dict(snap.to_dict().get("ai_memory") or {})
+
+
+def _save_memory(uid: str, mem: SummaryBufferMemory) -> None:
+    """SummaryBufferMemory → Firestore user_profiles/{uid}.ai_memory 저장."""
+    user_doc(uid).update({"ai_memory": mem.to_dict()})
+
+
 # ── AI 채팅 ───────────────────────────────────────────────────────────────────
 
 _FALLBACK_REPLY = {
@@ -106,60 +105,76 @@ _FALLBACK_REPLY = {
 }
 
 
-def chat_with_ai(
-    uid: str,
-    user_message: str,
-    conversation_history: Optional[list] = None,
-) -> dict:
+def chat_with_ai(uid: str, user_message: str) -> dict:
     """
-    유저 메시지 + Firestore 프로필 → Gemini → 개인화 응답.
+    유저 메시지 + Firestore 프로필 + 저장된 메모리 → Gemini → 개인화 응답.
 
     흐름:
-      1. Firestore에서 유저 프로필 읽기
-      2. build_chat_prompt()로 프로필 주입 프롬프트 생성
+      1. Firestore에서 유저 프로필 + SummaryBufferMemory 읽기
+      2. 메모리 히스토리를 build_chat_prompt()에 주입
       3. Gemini 호출 → JSON 파싱
-      4. profile_update_hint로 Firestore 프로필 자동 업데이트 (점진적 학습)
-      5. 응답 반환
+      4. mem.add_turn() → 10턴 초과 시 자동 요약·압축
+      5. 업데이트된 메모리 Firestore에 저장
+      6. profile_update_hint로 프로필 자동 업데이트 (점진적 학습)
 
-    Gemini 미설정(API 키 없음) 또는 오류 시 fallback 응답 반환.
+    Gemini 미설정 또는 오류 시 fallback 응답 반환 (메모리는 저장하지 않음).
 
     반환 키:
       reply, detected_emotion, suggested_next_action, profile_update_hint
-      (오류 시 _fallback: True 추가)
     """
-    user_profile = get_ai_user_profile(uid)
-    prompt = build_chat_prompt(user_message, conversation_history, user_profile)
+    # 1. 프로필 + 메모리 로드 (Firestore 1회 읽기)
+    snap = user_doc(uid).get()
+    data = snap.to_dict() or {} if snap.exists else {}
 
-    # system prompt + user prompt 합쳐서 전달 (moderation.py 패턴 동일)
-    full_prompt = CHATBOT_SYSTEM_PROMPT + "\n\n---\n\n" + prompt
+    user_profile = {
+        "interests":          data.get("interests") or [],
+        "conversation_style": data.get("communication_style"),
+        "social_style":       data.get("social_style"),
+        "loneliness_level":   data.get("loneliness_level"),
+        "task_preference":    data.get("task_preference") or [],
+    }
+    mem = SummaryBufferMemory.from_dict(data.get("ai_memory") or {})
 
-    client = _get_client()
-    if client is None:
-        return {**_FALLBACK_REPLY, "_fallback": True, "_reason": "no_api_key"}
+    # 2. 프롬프트 생성 (요약 + 최근 히스토리 주입)
+    prompt = build_chat_prompt(
+        user_message=user_message,
+        conversation_history=mem.get_history_for_prompt(),
+        user_profile=user_profile,
+    )
 
+    # 3. Gemini 호출
+    result = generate_json(prompt=prompt, system_instruction=CHATBOT_SYSTEM_PROMPT)
+
+    if not result:
+        return {**_FALLBACK_REPLY, "_fallback": True}
+
+    reply = result.get("reply", "")
+
+    # 4. 메모리에 턴 추가 (10턴 초과 시 자동 요약·압축)
+    mem.add_turn(user_message, reply)
+
+    # 5. 메모리 Firestore 저장
     try:
-        response = client.models.generate_content(
-            model=_GEMINI_MODEL,
-            contents=full_prompt,
-        )
-        text = response.text.strip()
-        # 마크다운 코드 펜스 제거
-        text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
-        data = json.loads(text)
-    except Exception as e:
-        return {**_FALLBACK_REPLY, "_fallback": True, "_reason": str(e)}
+        _save_memory(uid, mem)
+    except Exception:
+        pass  # 저장 실패해도 응답은 반환
 
-    # profile_update_hint → Firestore 자동 업데이트
-    hint = data.get("profile_update_hint") or {}
+    # 6. profile_update_hint → Firestore 프로필 업데이트
+    hint = result.get("profile_update_hint") or {}
     if hint:
         try:
             update_profile_from_hint(uid, hint)
         except Exception:
-            pass  # 프로필 업데이트 실패해도 채팅 응답 반환
+            pass
 
     return {
-        "reply":                data.get("reply", ""),
-        "detected_emotion":     data.get("detected_emotion", "unknown"),
-        "suggested_next_action":data.get("suggested_next_action", "continue_conversation"),
-        "profile_update_hint":  hint,
+        "reply":                 reply,
+        "detected_emotion":      result.get("detected_emotion", "unknown"),
+        "suggested_next_action": result.get("suggested_next_action", "continue_conversation"),
+        "profile_update_hint":   hint,
     }
+
+
+def clear_memory(uid: str) -> None:
+    """대화 메모리 초기화. 새 대화 시작 시 호출."""
+    user_doc(uid).update({"ai_memory": {}})
