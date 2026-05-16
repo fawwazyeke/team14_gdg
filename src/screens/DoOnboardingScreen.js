@@ -52,7 +52,7 @@ function StepWelcome({ onNext }) {
       <View style={styles.stepFooter}>
         <PrimaryButton P={P} onPress={onNext}>Begin</PrimaryButton>
         <Text style={styles.disclaimer}>Takes about a minute. You can change anything later.</Text>
-        <ProgressDots count={3} active={0} P={P} />
+        <ProgressDots count={4} active={0} P={P} />
       </View>
     </View>
   );
@@ -94,14 +94,70 @@ function StepName({ name, setName, onNext, onBack }) {
 
         <View style={styles.stepFooter}>
           <PrimaryButton P={P} onPress={onNext} disabled={!name.trim()}>Continue</PrimaryButton>
-          <ProgressDots count={3} active={1} P={P} />
+          <ProgressDots count={4} active={1} P={P} />
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-// ─── Step 2: Interests ──────────────────────────────────────────
+// ─── Step 2: Age ────────────────────────────────────────────────
+function StepAge({ age, setAge, onNext, onBack }) {
+  const ageNum = parseInt(age, 10);
+  const valid = !isNaN(ageNum) && ageNum >= 18 && ageNum <= 100;
+  const tooYoung = !isNaN(ageNum) && ageNum < 18 && age.length >= 2;
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.stepContainer}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          <Text style={[styles.backBtnText, { color: P.inkSoft }]}>← Back</Text>
+        </TouchableOpacity>
+
+        <View style={styles.stepBody}>
+          <Text style={[styles.stepTitle, { color: P.ink }]}>How old are you?</Text>
+          <Text style={[styles.stepSub, { color: P.inkSoft }]}>
+            We use this to keep the space safe. It's never shown to anyone.
+          </Text>
+
+          <TextInput
+            value={age}
+            onChangeText={v => setAge(v.replace(/[^0-9]/g, ''))}
+            placeholder="your age"
+            placeholderTextColor={P.inkMuted}
+            keyboardType="number-pad"
+            maxLength={3}
+            autoFocus
+            style={[styles.nameInput, {
+              color: P.ink,
+              borderBottomColor: valid ? P.primary : tooYoung ? '#b3261e' : P.line,
+            }]}
+          />
+
+          {tooYoung ? (
+            <Text style={[styles.inputHint, { color: '#b3261e' }]}>
+              You must be 18 or older to connect with others.
+            </Text>
+          ) : (
+            <Text style={[styles.inputHint, { color: P.inkMuted }]}>
+              Connecting with others requires age 18+.
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.stepFooter}>
+          <PrimaryButton P={P} onPress={onNext} disabled={!valid}>Continue</PrimaryButton>
+          <ProgressDots count={4} active={2} P={P} />
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+// ─── Step 3: Interests ──────────────────────────────────────────
 function StepInterests({ interests, setInterests, onNext, onBack }) {
   const toggle = (id) =>
     setInterests(interests.includes(id) ? interests.filter(x => x !== id) : [...interests, id]);
@@ -131,7 +187,7 @@ function StepInterests({ interests, setInterests, onNext, onBack }) {
         <PrimaryButton P={P} onPress={onNext} disabled={interests.length === 0}>
           {interests.length === 0 ? 'Pick at least one' : `Continue with ${interests.length}`}
         </PrimaryButton>
-        <ProgressDots count={3} active={2} P={P} />
+        <ProgressDots count={4} active={3} P={P} />
       </View>
     </View>
   );
@@ -142,6 +198,7 @@ export default function DoOnboardingScreen({ initialName = '', onComplete }) {
   const [fontsLoaded] = useFonts({ DMSans_400Regular, DMSans_600SemiBold, Fraunces_400Regular });
   const [step, setStep] = useState(0);
   const [name, setName] = useState(initialName);
+  const [age, setAge] = useState('');
   const [interests, setInterests] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -154,7 +211,7 @@ export default function DoOnboardingScreen({ initialName = '', onComplete }) {
     setSubmitting(true);
     setError('');
     try {
-      await onComplete({ name: name.trim(), interests, surveyAnswers: {} });
+      await onComplete({ name: name.trim(), age: parseInt(age, 10), interests, surveyAnswers: {} });
     } catch (e) {
       setError(e?.message || 'Could not save. Try again.');
       setSubmitting(false);
@@ -171,7 +228,8 @@ export default function DoOnboardingScreen({ initialName = '', onComplete }) {
     >
       {step === 0 && <StepWelcome onNext={next} />}
       {step === 1 && <StepName name={name} setName={setName} onNext={next} onBack={back} />}
-      {step === 2 && (
+      {step === 2 && <StepAge age={age} setAge={setAge} onNext={next} onBack={back} />}
+      {step === 3 && (
         <StepInterests
           interests={interests}
           setInterests={setInterests}

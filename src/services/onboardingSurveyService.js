@@ -47,7 +47,7 @@ const DEFAULT_SURVEY_ANSWERS = {
   follow_up_confidence: 'say_thanks',
 };
 
-export async function ensureBackendProfile({ nickname, interests }) {
+export async function ensureBackendProfile({ nickname, interests, age }) {
   try {
     return await apiFetch('/users/me');
   } catch (error) {
@@ -65,6 +65,7 @@ export async function ensureBackendProfile({ nickname, interests }) {
         country: 'unknown',
         language: 'unknown',
         interests,
+        age: age ?? null,
       }),
     });
   } catch (error) {

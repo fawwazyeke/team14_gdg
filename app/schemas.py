@@ -38,6 +38,7 @@ class UserProfileCreate(BaseModel):
     language: str
     interests: Optional[List[str]] = None
     communication_style: Optional[str] = None
+    age: Optional[int] = None
 
 
 class UserProfileResponse(BaseModel):
@@ -49,6 +50,7 @@ class UserProfileResponse(BaseModel):
     stage: str
     interests: Optional[Any] = None
     communication_style: Optional[str] = None
+    age: Optional[int] = None
     created_at: datetime
 
 

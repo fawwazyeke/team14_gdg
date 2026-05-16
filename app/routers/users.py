@@ -35,6 +35,7 @@ def create_profile(body: UserProfileCreate, uid: str = Depends(get_current_uid))
         "stage": "AI_START",
         "interests": body.interests or [],
         "communication_style": body.communication_style,
+        "age": body.age,
         "created_at": datetime.utcnow(),
     }
     ref.set(data)

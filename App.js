@@ -57,13 +57,13 @@ function AppGate() {
       .catch((e) => console.warn('Backend profile sync failed (will retry next launch):', e.message));
   }, [user, hasOnboarded, profile]);
 
-  const handleOnboardingComplete = async ({ name, interests, surveyAnswers }) => {
+  const handleOnboardingComplete = async ({ name, age, interests, surveyAnswers }) => {
     if (!user) return;
 
-    await completeProfile(name, { interests });
+    await completeProfile(name, { interests, age });
 
     try {
-      await ensureBackendProfile({ nickname: name, interests });
+      await ensureBackendProfile({ nickname: name, interests, age });
       await submitOnboardingSurvey(surveyAnswers);
     } catch (e) {
       console.warn('Backend onboarding call failed, will retry later:', e.message);
