@@ -7,12 +7,10 @@ from app.database import user_doc, user_profiles_col
 from app.firebase import get_firestore
 
 _COLORS = [
-    "Amber", "Crimson", "Indigo", "Violet", "Azure",
-    "Scarlet", "Ivory", "Cobalt", "Jade", "Coral",
-    "Slate", "Teal", "Ochre", "Sienna", "Sage",
-    "Rose", "Gold", "Silver", "Onyx", "Pearl",
-    "Lavender", "Cerulean", "Maroon", "Bronze", "Copper",
-    "Sapphire", "Emerald", "Topaz", "Russet", "Dusk",
+    "Red", "Pink", "Orange", "Amber", "Yellow",
+    "Lime", "Green", "Teal", "Cyan", "Blue",
+    "Indigo", "Violet", "Purple", "Rose", "Coral",
+    "Gold", "Sage", "Slate", "Crimson", "Cobalt",
 ]
 
 _MUSICAL_TERMS = [

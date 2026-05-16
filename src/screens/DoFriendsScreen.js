@@ -14,12 +14,33 @@ import {
   acceptFriendRequest, rejectFriendRequest,
 } from '../services/friendsService';
 
-const anonColors = ['#A26847', '#5F7F65', '#4D8485', '#A06570', '#6D516A'];
+const ALIAS_COLOR_MAP = {
+  Red:     '#EF4444',
+  Pink:    '#EC4899',
+  Orange:  '#F97316',
+  Amber:   '#F59E0B',
+  Yellow:  '#EAB308',
+  Lime:    '#84CC16',
+  Green:   '#22C55E',
+  Teal:    '#14B8A6',
+  Cyan:    '#06B6D4',
+  Blue:    '#3B82F6',
+  Indigo:  '#6366F1',
+  Violet:  '#8B5CF6',
+  Purple:  '#A855F7',
+  Rose:    '#F43F5E',
+  Coral:   '#FF6B6B',
+  Gold:    '#D97706',
+  Sage:    '#6B8F6B',
+  Slate:   '#64748B',
+  Crimson: '#DC2626',
+  Cobalt:  '#1D4ED8',
+};
 
-function tintFor(item, fallbackIndex = 0) {
-  const key = String(item?.uid || item?.pair_key || item?.alias || fallbackIndex);
-  const total = key.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  return anonColors[total % anonColors.length];
+function tintFor(item) {
+  const alias = item?.alias || '';
+  const colorWord = alias.split(' ')[0];
+  return ALIAS_COLOR_MAP[colorWord] || '#6366F1';
 }
 
 function AnonymousGlyph({ item, P, size = 44, kind = 'notes' }) {
