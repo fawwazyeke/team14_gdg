@@ -21,6 +21,18 @@ def _get_client() -> Optional[genai.Client]:
     return _client
 
 
+def generate_text(prompt: str) -> str:
+    client = _get_client()
+    if not client:
+        return ""
+    try:
+        response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+        return response.text.strip()
+    except Exception as error:
+        print(f"Gemini API error: {error}")
+        return ""
+
+
 def generate_json(prompt: str, system_instruction: Optional[str] = None) -> dict:
     client = _get_client()
     if not client:
