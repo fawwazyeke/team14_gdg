@@ -139,7 +139,6 @@ TASK_REASON_FALLBACK: dict = {
 # ---------------------------------------------------------------------------
 # Helper — always return a deep copy so callers cannot mutate the constants
 # ---------------------------------------------------------------------------
-
 def get_chat_fallback() -> dict:
     return copy.deepcopy(CHAT_FALLBACK_RESPONSE)
 
@@ -170,3 +169,26 @@ def get_friend_reason_fallback() -> dict:
 
 def get_task_reason_fallback() -> dict:
     return copy.deepcopy(TASK_REASON_FALLBACK)
+
+"""functions: event feedback"""
+def get_event_feedback_questions_fallback():
+    return {
+        "questions": [
+            "How was the event overall?",
+            "What did you do during the event?",
+            "Did you interact with anyone during the event?",
+            "Would you like to try a similar event again?"
+        ]
+    }
+
+
+def get_event_feedback_score_fallback():
+    return {
+        "social_score": 5,
+        "summary": "The event feedback was saved, but the AI could not fully evaluate it.",
+        "strengths": [],
+        "growth_points": [
+            "Try reflecting on one small social moment from the event."
+        ],
+        "recommended_next_action": "At your next event, try saying one simple greeting to someone nearby."
+    }

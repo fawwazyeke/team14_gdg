@@ -12,6 +12,8 @@ from .prompts import (
     build_profile_analysis_prompt,
     build_task_recommendation_reason_prompt,
     build_friend_recommendation_reason_prompt,
+    build_event_feedback_questions_prompt,
+    build_event_feedback_score_prompt,
 )
 from .fallbacks import (
     CHAT_FALLBACK_RESPONSE,
@@ -30,6 +32,8 @@ from .fallbacks import (
     get_daily_question_fallback,
     get_friend_reason_fallback,
     get_task_reason_fallback,
+    get_event_feedback_questions_fallback,
+    get_event_feedback_score_fallback,
 )
 from .task_logic import (
     get_default_tasks,

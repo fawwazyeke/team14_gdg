@@ -470,3 +470,63 @@ of our companion app.
 """.strip()
 
     return prompt
+
+def build_event_feedback_questions_prompt(event: dict, user_profile: dict) -> str:
+    return f"""
+You are helping a user reflect on a social event they joined.
+
+Create exactly 4 gentle questions based on the event.
+The questions should check social engagement, comfort, communication, and reflection.
+Do not shame the user. Do not diagnose the user.
+Return raw JSON only.
+
+Event:
+{event}
+
+User profile:
+{user_profile}
+
+JSON format:
+{{
+  "questions": [
+    "question 1",
+    "question 2",
+    "question 3",
+    "question 4"
+  ]
+}}
+"""
+
+"""function: event feedback"""
+def build_event_feedback_score_prompt(
+    event: dict,
+    answers: list[dict],
+    user_profile: dict,
+) -> str:
+    return f"""
+You are evaluating a user's post-event reflection for social ability.
+
+Score the user's social engagement from 1 to 10.
+Use a supportive and non-judgmental tone.
+A higher score means the user showed more social awareness, communication, reflection, or willingness to engage.
+Do not shame the user. Do not diagnose the user.
+Return raw JSON only.
+
+Event:
+{event}
+
+User profile:
+{user_profile}
+
+Questions and answers:
+{answers}
+
+JSON format:
+{{
+  "social_score": 1,
+  "summary": "short summary",
+  "strengths": ["strength 1", "strength 2"],
+  "growth_points": ["growth point 1"],
+  "recommended_next_action": "one gentle next action"
+}}
+"""
