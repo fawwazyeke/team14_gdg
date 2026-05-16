@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+import os
+
+from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import auth, users, survey, missions, chat, matching, events, settings
@@ -36,3 +38,15 @@ app.include_router(ai.router,        prefix="/ai",        tags=["AI"])
 @app.get("/")
 def health_check():
     return {"message": "API is running", "db": "Firestore (do-test-925d3)"}
+
+
+@app.get("/debug/auth")
+def debug_auth(authorization: str = Header(None)):
+    """Debug endpoint — shows what token the server receives (no auth required)."""
+    return {
+        "dev_mode": os.getenv("DEV_MODE", "false"),
+        "has_auth_header": authorization is not None,
+        "token_preview": (authorization[:50] + "...") if authorization and len(authorization) > 50 else authorization,
+        "firebase_project": os.getenv("FIREBASE_PROJECT_ID", "not set"),
+        "gemini_key_set": bool(os.getenv("GEMINI_API_KEY")),
+    }

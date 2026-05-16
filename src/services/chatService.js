@@ -1,25 +1,18 @@
 import { apiFetch } from './backendClient';
 
 export async function sendMessage(userText, conversationHistory = [], userProfile = {}) {
-  const data = await apiFetch('/chat/ai', {
+  const data = await apiFetch('/ai/chat', {
     method: 'POST',
-    body: JSON.stringify({
-      user_id: 1,
-      message: userText,
-      conversation_history: conversationHistory,
-      user_profile: userProfile,
-    }),
+    body: JSON.stringify({ message: userText }),
   });
 
-  const response = data.ai_response || {};
   const text =
-    response.reply ||
-    response.message ||
-    response.text ||
-    (typeof response === 'string' ? response : 'I hear you. Tell me more.');
+    data.reply ||
+    data.message ||
+    (typeof data === 'string' ? data : 'I hear you. Tell me more.');
 
   return {
-    _id: data.message_id || Math.round(Math.random() * 1_000_000),
+    _id: Math.round(Math.random() * 1_000_000),
     text,
     createdAt: new Date(),
     user: {
