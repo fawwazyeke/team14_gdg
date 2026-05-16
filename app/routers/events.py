@@ -1,8 +1,7 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
-from app.dependencies import get_current_uid
 from app.services.event_service import (
     Event,
     EventQuery,
@@ -46,22 +45,3 @@ async def read_event(event_id: str):
 async def refresh_event_cache(from_date: str | None = None, to_date: str | None = None):
     return await refresh_events(from_date=from_date, to_date=to_date)
 
-
-# ── [AI 담당자 구현 예정] 모임/이벤트 AI 추천 ─────────────────────────────────
-
-@router.get("/recommend")
-async def recommend_events(uid: str = Depends(get_current_uid)):
-    """
-    [AI 담당자 구현 예정]
-    사용자 프로필(관심사, 언어, 국가, stability_score)을 바탕으로
-    AI가 적합한 gathering/event를 추천.
-
-    현재: 빈 목록 반환 (테스트용 스텁).
-    AI 담당자 구현 시 이 함수 내부를 교체하면 됨.
-    반환 형식: { "recommendations": [ {...event fields...} ], "reason": str }
-    """
-    # TODO: AI 담당자 — user_profiles/{uid} 데이터 읽어서 ai_logic 또는 Gemini로 추천
-    return {
-        "recommendations": [],
-        "reason": "AI 이벤트 추천 기능 구현 예정",
-    }
