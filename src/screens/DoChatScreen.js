@@ -125,8 +125,16 @@ export default function DoChatScreen() {
               placeholder="What's on your mind?"
               placeholderTextColor={P.inkMuted}
               multiline
-              style={[styles.input, { color: P.ink }]}
+              returnKeyType="send"
+              submitBehavior="submit"
+              style={[styles.input, Platform.OS === 'web' && styles.inputWeb, { color: P.ink }]}
               onSubmitEditing={send}
+              onKeyPress={(event) => {
+                if (Platform.OS !== 'web') return;
+                if (event.nativeEvent.key !== 'Enter' || event.nativeEvent.shiftKey) return;
+                event.preventDefault?.();
+                send();
+              }}
             />
             <TouchableOpacity onPress={send} disabled={!draft.trim() || isTyping} style={styles.sendBtn}>
               <LinearGradient
@@ -151,7 +159,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
   },
   wordmark: { fontSize: 22, fontWeight: '600', letterSpacing: -0.4 },
-  statusWrap: { flex: 1, alignItems: 'flex-end' },
+  statusWrap: { flex: 1, alignItems: 'flex-end', marginRight: 54 },
   headerSub: { fontSize: 13, fontWeight: '400' },
 
   errorBanner: { backgroundColor: '#b3261e', paddingHorizontal: 16, paddingVertical: 8 },
@@ -179,14 +187,15 @@ const styles = StyleSheet.create({
 
   inputWrap: { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: 0.5 },
   inputBox: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    paddingLeft: 18, paddingRight: 8, paddingVertical: 8,
-    borderRadius: 26, borderWidth: 0.5,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingLeft: 16, paddingRight: 7, paddingVertical: 5,
+    borderRadius: 22, borderWidth: 0.5,
   },
-  input: { flex: 1, fontSize: 16, lineHeight: 22, maxHeight: 100, paddingVertical: 8 },
-  sendBtn: { marginBottom: 2 },
+  input: { flex: 1, fontSize: 15, lineHeight: 20, maxHeight: 82, paddingVertical: 5 },
+  inputWeb: { outlineStyle: 'none', outlineWidth: 0, boxShadow: 'none' },
+  sendBtn: {},
   sendBtnGrad: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
   },
 });

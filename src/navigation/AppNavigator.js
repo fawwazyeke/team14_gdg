@@ -65,19 +65,21 @@ function YouStack() {
   );
 }
 
-const TABS = [
+const BOTTOM_TABS = [
   { name: 'Do',      label: 'Do',      icon: ChatIcon,   Screen: TalkStack },
   { name: 'Relate',  label: 'Relate',  icon: PeopleIcon, Screen: PeopleStack },
   { name: 'Mission', label: 'Mission', icon: TargetIcon, Screen: BridgesStack },
   { name: 'Find',    label: 'Find',    icon: GatherIcon, Screen: GatherStack },
-  { name: 'Soul',    label: 'Soul',    icon: PersonIcon, Screen: YouStack },
 ];
+
+const PROFILE_TAB = { name: 'Soul', label: 'Soul', icon: PersonIcon, Screen: YouStack };
+const TABS = [...BOTTOM_TABS, PROFILE_TAB];
 
 const linking = {
   config: {
     screens: {
       Do: {
-        path: '',
+        path: 'do',
         screens: {
           TalkMain: '',
         },
@@ -90,7 +92,7 @@ const linking = {
         },
       },
       Mission: {
-        path: 'mission',
+        path: '',
         screens: {
           BridgesMain: '',
         },
@@ -114,42 +116,71 @@ const linking = {
 function DoTabBar({ state, navigation }) {
   const { P } = useDoTheme();
   const insets = useSafeAreaInsets();
+  const activeRoute = state.routes[state.index];
+  const profileFocused = activeRoute?.name === PROFILE_TAB.name;
 
   return (
-    <View style={[styles.tabBarOuter, { paddingBottom: insets.bottom + 4, backgroundColor: 'transparent' }]}>
-      <View style={[styles.tabBarPill, { backgroundColor: P.surface, borderColor: P.line }]}>
-        {state.routes.map((route, index) => {
-          const tab = TABS[index];
-          const focused = state.index === index;
-          const color = focused ? '#fff' : P.inkSoft;
+    <>
+      <TouchableOpacity
+        onPress={() => navigation.navigate(PROFILE_TAB.name)}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Open Soul"
+        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        style={[styles.profileFab, {
+          top: insets.top + 10,
+          backgroundColor: profileFocused ? P.primary : P.surface,
+          borderColor: profileFocused ? P.primary : P.line,
+        }]}
+      >
+        {profileFocused ? (
+          <LinearGradient
+            colors={[P.grad[0], P.grad[1]]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.profileFabGradient}
+          >
+            {PROFILE_TAB.icon('#fff', 21)}
+          </LinearGradient>
+        ) : (
+          PROFILE_TAB.icon(P.inkSoft, 21)
+        )}
+      </TouchableOpacity>
 
-          return (
-            <TouchableOpacity
-              key={route.key}
-              onPress={() => navigation.navigate(route.name)}
-              activeOpacity={0.8}
-              style={[styles.tabBtn, focused && styles.tabBtnFocused]}
-            >
-              {focused ? (
-                <LinearGradient
-                  colors={[P.grad[0], P.grad[1]]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={styles.tabBtnActive}
-                >
-                  {tab.icon(color, 20)}
-                  <Text style={styles.tabLabelActive}>{tab.label}</Text>
-                </LinearGradient>
-              ) : (
-                <View style={styles.tabBtnInner}>
-                  {tab.icon(color, 20)}
-                  <Text style={[styles.tabLabel, { color: P.inkSoft }]} numberOfLines={1}>{tab.label}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+      <View style={[styles.tabBarOuter, { paddingBottom: insets.bottom + 4, backgroundColor: 'transparent' }]}>
+        <View style={[styles.tabBarPill, { backgroundColor: P.surface, borderColor: P.line }]}>
+          {BOTTOM_TABS.map((tab) => {
+            const route = state.routes.find((r) => r.name === tab.name);
+            const focused = activeRoute?.name === tab.name;
+            const color = focused ? '#fff' : P.inkSoft;
+
+            return (
+              <TouchableOpacity
+                key={route?.key || tab.name}
+                onPress={() => navigation.navigate(tab.name)}
+                activeOpacity={0.8}
+                style={[styles.tabBtn, focused && styles.tabBtnFocused]}
+              >
+                {focused ? (
+                  <LinearGradient
+                    colors={[P.grad[0], P.grad[1]]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={styles.tabBtnActive}
+                  >
+                    {tab.icon(color, 20)}
+                    <Text style={styles.tabLabelActive}>{tab.label}</Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={styles.tabBtnInner}>
+                    {tab.icon(color, 20)}
+                    <Text style={[styles.tabLabel, { color: P.inkSoft }]} numberOfLines={1}>{tab.label}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
-    </View>
+    </>
   );
 }
 
@@ -157,6 +188,7 @@ export default function AppNavigator() {
   return (
     <NavigationContainer linking={linking}>
       <Tab.Navigator
+        initialRouteName="Mission"
         tabBar={props => <DoTabBar {...props} />}
         screenOptions={{ headerShown: false }}
       >
@@ -191,4 +223,15 @@ const styles = StyleSheet.create({
   tabBtnInner: { paddingVertical: 8, paddingHorizontal: 4, alignItems: 'center', gap: 3 },
   tabLabel: { fontSize: 11, fontWeight: '600' },
   tabLabelActive: { color: '#fff', fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
+  profileFab: {
+    position: 'absolute', right: 18, zIndex: 60,
+    width: 46, height: 46, borderRadius: 23,
+    borderWidth: 0.5, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#2A2420', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16, shadowRadius: 16, elevation: 10,
+  },
+  profileFabGradient: {
+    width: 46, height: 46, borderRadius: 23,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });

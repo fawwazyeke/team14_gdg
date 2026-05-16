@@ -9,14 +9,6 @@ import { useDoTheme } from '../context/DoThemeContext';
 import { Card } from '../components/DoAtoms';
 import { getDailyMissions, completeMission } from '../services/missionsService';
 
-function timeGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  if (h < 21) return 'Good evening';
-  return 'Tonight';
-}
-
 const CAT_EMOJI = { social: '✉️', physical: '☀️', explore: '🍵' };
 const CAT_LABELS = { social: 'Social', physical: 'Body', explore: 'Explore' };
 const CAT_TINT = {
@@ -131,7 +123,6 @@ export default function DoMissionsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Text style={[styles.greeting, { color: P.inkMuted }]}>{timeGreeting()}.</Text>
           <Text style={[styles.screenTitle, { color: P.ink }]}>Today's bridges</Text>
           <Text style={[styles.screenSub, { color: P.inkSoft }]}>Small steps towards connection.</Text>
         </View>
@@ -207,7 +198,6 @@ export default function DoMissionsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { paddingHorizontal: 24, paddingBottom: 8 },
-  greeting: { fontSize: 13, fontWeight: '500', marginBottom: 6 },
   screenTitle: { fontSize: 30, fontWeight: '600', letterSpacing: -0.5 },
   screenSub: { fontSize: 15, marginTop: 6, lineHeight: 22 },
 

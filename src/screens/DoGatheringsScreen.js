@@ -141,8 +141,7 @@ export default function DoGatheringsScreen() {
     <View style={[styles.root, { backgroundColor: P.bg }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={[styles.screenTitle, { color: P.ink }]}>Gatherings, gently</Text>
-        <Text style={[styles.screenSub, { color: P.inkSoft }]}>Small rooms. Low pressure. Bring yourself.</Text>
+        <Text style={[styles.screenTitle, { color: P.ink }]}>Gatherings</Text>
 
         {/* City + Category rows */}
         <View style={stackFilters ? styles.filterStack : styles.filterRow}>
@@ -238,7 +237,6 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { paddingHorizontal: 24, paddingBottom: 4 },
   screenTitle: { fontSize: 30, fontWeight: '600', letterSpacing: -0.5 },
-  screenSub: { fontSize: 15, marginTop: 6, lineHeight: 22, marginBottom: 14 },
 
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
   filterStack: { gap: 8, marginTop: 14 },
