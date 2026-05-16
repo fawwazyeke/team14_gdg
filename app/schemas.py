@@ -150,3 +150,33 @@ class RecordWithMissionResponse(BaseModel):
     image_url: Optional[str] = None
     text: Optional[str] = None
     created_at: datetime
+
+
+# ── Chat ───────────────────────────────────────────────────────────────────────
+
+class ChatMessageRequest(BaseModel):
+    message: str
+
+
+class ChatMessageResponse(BaseModel):
+    reply: str
+    detected_emotion: Optional[str] = None
+    suggested_next_action: Optional[str] = None
+
+
+class ChatHistoryItem(BaseModel):
+    id: str
+    role: str           # "user" | "ai"
+    message: str
+    detected_emotion: Optional[str] = None
+    created_at: datetime
+
+
+# AI가 대화에서 추론한 유저 특성 (chat_profile)
+class ChatProfileResponse(BaseModel):
+    interests: List[str] = []
+    social_style: Optional[str] = None
+    conversation_style: Optional[str] = None
+    loneliness_level: Optional[str] = None
+    task_preference: List[str] = []
+    updated_at: Optional[datetime] = None

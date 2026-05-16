@@ -6,6 +6,8 @@ Firestore 컬렉션 구조:
   user_profiles/{uid}/stability_logs/{id}      ← 점수 변화 로그
   user_profiles/{uid}/missions/{id}            ← 미션
   user_profiles/{uid}/mission_records/{id}     ← 미션 완료 기록
+  user_profiles/{uid}/chat_history/{id}        ← 챗봇 대화 기록
+  user_profiles/{uid}/chat_profile (doc)       ← AI가 추론한 유저 특성 (단일 도큐먼트)
 
 건드리지 않는 컬렉션 (다른 팀원 담당):
   users/{uid}    ← fawwaz 로그인/프로필
@@ -19,6 +21,8 @@ COL_ONBOARDING = "onboarding_answers"
 COL_STABILITY_LOGS = "stability_logs"
 COL_MISSIONS = "missions"
 COL_MISSION_RECORDS = "mission_records"
+COL_CHAT_HISTORY = "chat_history"
+COL_CHAT_PROFILE = "chat_profile"
 
 
 def user_profiles_col():
@@ -43,3 +47,12 @@ def missions_col(uid: str):
 
 def mission_records_col(uid: str):
     return user_doc(uid).collection(COL_MISSION_RECORDS)
+
+
+def chat_history_col(uid: str):
+    return user_doc(uid).collection(COL_CHAT_HISTORY)
+
+
+def chat_profile_doc(uid: str):
+    """AI 추론 유저 특성 — 단일 도큐먼트, 대화할수록 덮어쓰며 업데이트."""
+    return user_doc(uid).collection(COL_CHAT_PROFILE).document("latest")
