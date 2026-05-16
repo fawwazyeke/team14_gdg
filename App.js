@@ -23,9 +23,17 @@ function AppGate() {
     }
 
     AsyncStorage.getItem(userStorageKeys(user.uid).onboarded).then((val) => {
-      setHasOnboarded(val === 'true');
+      if (val === 'true') {
+        setHasOnboarded(true);
+      } else if (profile?.nickname) {
+        // Profile already exists in Firestore — user has onboarded on another device or AsyncStorage was cleared
+        AsyncStorage.setItem(userStorageKeys(user.uid).onboarded, 'true');
+        setHasOnboarded(true);
+      } else {
+        setHasOnboarded(false);
+      }
     });
-  }, [needsProfile, user]);
+  }, [needsProfile, profile, user]);
 
   const handleOnboardingComplete = async ({ name, interests, surveyAnswers }) => {
     if (!user) {
@@ -33,8 +41,13 @@ function AppGate() {
     }
 
     await completeProfile(name, { interests });
-    await ensureBackendProfile({ nickname: name, interests });
-    await submitOnboardingSurvey(surveyAnswers);
+
+    try {
+      await ensureBackendProfile({ nickname: name, interests });
+      await submitOnboardingSurvey(surveyAnswers);
+    } catch (e) {
+      console.warn('Backend onboarding call failed, will retry later:', e.message);
+    }
 
     const keys = userStorageKeys(user.uid);
     await AsyncStorage.multiSet([
