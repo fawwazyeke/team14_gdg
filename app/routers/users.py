@@ -12,12 +12,15 @@ from app.dependencies import get_current_uid
 from app.models import doc_to_user_profile
 from app.schemas import (
     AI_PENALTY_TRUST_THRESHOLD,
+    BadgeResponse,
     ScoreBarToggleResponse,
     TrustProfileResponse,
     UNLOCK_THRESHOLD,
     UserProfileCreate,
     UserProfileResponse,
     UserStatusResponse,
+    badge_next_info,
+    score_to_badge,
     score_to_stage,
 )
 from app.services.stability_service import get_streak, get_trust_profile
@@ -108,3 +111,31 @@ def get_my_streak(uid: str = Depends(get_current_uid)):
 def get_my_trust(uid: str = Depends(get_current_uid)):
     """신뢰도 프로파일 — AI 페널티 누적 횟수 기반."""
     return get_trust_profile(uid)
+
+
+@router.get("/me/badge", response_model=BadgeResponse)
+def get_my_badge(uid: str = Depends(get_current_uid)):
+    """
+    점수 기반 뱃지(음자리표) 조회.
+
+    단계:
+      0~99점    → 뱃지 없음
+      100~499점 → 낮은음자리표
+      500~999점 → 가온음자리표
+      1000점+   → 높은음자리표
+
+    next_badge / points_needed 로 UI 프로그레스바 표현 가능.
+    """
+    snap = user_doc(uid).get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    score = float(snap.to_dict().get("stability_score", 0))
+    next_info = badge_next_info(score)
+
+    return BadgeResponse(
+        uid=uid,
+        stability_score=score,
+        badge=score_to_badge(score),
+        **next_info,
+    )

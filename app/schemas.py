@@ -47,6 +47,33 @@ PENALTY_BASE = {
 AI_PENALTY_TRUST_THRESHOLD = 5
 
 
+# ── Badge System ───────────────────────────────────────────────────────────────
+
+# (threshold, badge_name) — 높은 순서로 정렬
+BADGE_THRESHOLDS = [
+    (1000, "높은음자리표"),
+    (500,  "가온음자리표"),
+    (100,  "낮은음자리표"),
+]
+
+
+def score_to_badge(score: float) -> Optional[str]:
+    """100점 미만 → None, 100~499 → 낮은음자리표, 500~999 → 가온음자리표, 1000+ → 높은음자리표."""
+    for threshold, name in BADGE_THRESHOLDS:
+        if score >= threshold:
+            return name
+    return None
+
+
+def badge_next_info(score: float) -> dict:
+    """다음 뱃지 이름과 필요 점수 반환. 최고 단계이면 next_badge=None."""
+    current = score_to_badge(score)
+    for threshold, name in reversed(BADGE_THRESHOLDS):
+        if score < threshold:
+            return {"next_badge": name, "next_badge_threshold": threshold, "points_needed": round(threshold - score, 2)}
+    return {"next_badge": None, "next_badge_threshold": None, "points_needed": 0}
+
+
 def score_to_stage(score: float) -> str:
     if score >= 100:
         return "CONNECTING"
@@ -249,6 +276,17 @@ class FriendUnfriendResponse(BaseModel):
 
 class GatheringAttendRequest(BaseModel):
     gathering_id: str
+
+
+# ── Badge ─────────────────────────────────────────────────────────────────────
+
+class BadgeResponse(BaseModel):
+    uid: str
+    stability_score: float
+    badge: Optional[str]              # None | "낮은음자리표" | "가온음자리표" | "높은음자리표"
+    next_badge: Optional[str]         # 다음 뱃지 이름 (최고 단계면 None)
+    next_badge_threshold: Optional[int]  # 다음 뱃지 필요 점수
+    points_needed: float              # 다음 뱃지까지 남은 점수 (최고 단계면 0)
 
 
 # ── Moderation (AI 담당자 연동용) ─────────────────────────────────────────────
