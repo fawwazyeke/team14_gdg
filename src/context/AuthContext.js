@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
         const remoteProfile = await withTimeout(getUserProfile(nextUser.uid), 8000);
         const pendingProfile = await getPendingProfile(nextUser.uid);
 
-        if (pendingProfile?.interests?.length || pendingProfile?.age) {
+        if (pendingProfile) {
           await saveUserProfile({
             ...pendingProfile,
             uid: nextUser.uid,
@@ -110,12 +110,6 @@ export function AuthProvider({ children }) {
 
         // Always persist nickname locally so Firestore downtime doesn't re-prompt the user
         AsyncStorage.setItem(userStorageKeys(user.uid).name, profileInput.nickname).catch(() => {});
-
-        if (!Object.prototype.hasOwnProperty.call(extras, 'interests') && !Object.prototype.hasOwnProperty.call(extras, 'age')) {
-          await savePendingProfile(profileInput);
-          setProfile(profileInput);
-          return;
-        }
 
         try {
           const savedProfile = await withTimeout(saveUserProfile(profileInput), 8000);

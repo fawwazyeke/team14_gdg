@@ -1,10 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { firebaseDb } from '../config/firebase';
-import { apiFetch } from './backendClient';
-
-const USER_PROFILES_COLLECTION = 'user_profiles';
 
 export const userStorageKeys = (uid) => ({
   onboarded: `has_onboarded:${uid}`,
@@ -14,37 +11,28 @@ export const userStorageKeys = (uid) => ({
 });
 
 export async function getUserProfile(uid) {
-  const snapshot = await getDoc(doc(firebaseDb, USER_PROFILES_COLLECTION, uid));
+  const snapshot = await getDoc(doc(firebaseDb, 'users', uid));
   return snapshot.exists() ? snapshot.data() : null;
 }
 
 export async function saveUserProfile(input) {
-  try {
-    return await apiFetch('/users/me');
-  } catch (error) {
-    if (!String(error.message || '').includes('Profile not found')) {
-      throw error;
-    }
+  const ref = doc(firebaseDb, 'users', input.uid);
+  const snapshot = await getDoc(ref);
+  const data = {
+    uid: input.uid,
+    nickname: input.nickname.trim(),
+    email: input.email ?? null,
+    photoURL: input.photoURL ?? null,
+    interests: input.interests ?? [],
+    updatedAt: serverTimestamp(),
+  };
+
+  if (!snapshot.exists()) {
+    data.createdAt = serverTimestamp();
   }
 
-  try {
-    return await apiFetch('/users', {
-      method: 'POST',
-      body: JSON.stringify({
-        nickname: input.nickname.trim(),
-        country: input.country ?? 'unknown',
-        language: input.language ?? 'unknown',
-        interests: input.interests ?? [],
-        communication_style: input.communication_style ?? null,
-        age: input.age ?? null,
-      }),
-    });
-  } catch (error) {
-    if (!String(error.message || '').includes('Profile already exists')) {
-      throw error;
-    }
-    return apiFetch('/users/me');
-  }
+  await setDoc(ref, data, { merge: true });
+  return data;
 }
 
 export async function savePendingProfile(input) {
