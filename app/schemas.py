@@ -147,8 +147,7 @@ class UserProfileResponse(BaseModel):
     nickname: str
     country: str
     language: str
-    stability_score: float
-    stability_score: float       # float: +0.5 단위 지원
+    stability_score: float       # +0.5 단위 지원
     stage: str
     interests: Optional[Any] = None
     communication_style: Optional[str] = None
@@ -160,21 +159,13 @@ class UserProfileResponse(BaseModel):
 
 class UserStatusResponse(BaseModel):
     uid: str
-    stability_score: float
-    stage: str
-    can_use_ai_chat: bool
-    can_do_missions: bool
-    can_recommend_users: bool
-    can_access_events: bool
-    can_chat_with_users: bool
-    can_access_gatherings: bool = False
-    stability_score: float       # float: +0.5 단위 지원
+    stability_score: float       # +0.5 단위 지원
     stage: str
     # 기능 잠금 해제 플래그
     can_use_ai_chat: bool        # AI_START 이상 (항상 true)
     can_do_missions: bool        # MISSION_PRACTICE 이상 (score >= 36)
-    can_recommend_users: bool    # READY_TO_CONNECT 이상 (score >= 61)
-    can_access_events: bool      # READY_TO_CONNECT 이상 (score >= 61)
+    can_recommend_users: bool    # READY_TO_CONNECT 이상 (score >= 60)
+    can_access_events: bool      # READY_TO_CONNECT 이상 (score >= 60)
     can_chat_with_users: bool    # score >= 60 (사람과 대화 해금)
     can_access_gatherings: bool  # score >= 100 (실제 모임 참석 해금)
 
@@ -203,7 +194,6 @@ class MissionCreate(BaseModel):
     title: str
     description: str
     difficulty: str
-    verification_type: Optional[str] = None
     verification_type: Optional[str] = None  # "text" | "photo" | None (AI 미션)
     stability_delta: int = 0
     is_ai_generated: bool = False
@@ -216,11 +206,12 @@ class MissionResponse(BaseModel):
     description: str
     difficulty: str
     category: str = "wellness"
-    verification_type: Optional[str] = None
     verification_type: Optional[str] = None  # AI 미션은 null
     is_ai_generated: bool
     status: str
     stability_delta: float
+    source_task_id: Optional[str] = None    # deduplication key (AI missions)
+    ai_reason: Optional[str] = None         # why this task was recommended
     created_at: datetime
     completed_at: Optional[datetime] = None
 
@@ -238,7 +229,6 @@ class MissionCompleteResponse(BaseModel):
     stability_score: float
     stage: str
     total_delta: int
-    verified: bool
     verified: bool  # 인증 여부
 
 

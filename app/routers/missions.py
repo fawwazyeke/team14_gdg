@@ -18,7 +18,7 @@ from ai_logic.task_logic import recommend_tasks
 from app.database import mission_records_col, missions_col, stability_logs_col, user_doc
 from app.dependencies import get_current_uid
 from app.models import doc_to_mission, doc_to_record
-from app.services.mission_service import generate_ai_missions, generate_rule_based_missions
+from app.services.mission_service import generate_rule_based_missions
 from app.schemas import (
     MissionCompleteRequest,
     MissionCompleteResponse,
@@ -101,7 +101,7 @@ def _delete_old_missions(col) -> None:
 
 
 def _store_missions(col, mission_dicts: list) -> list:
-    """Write generated missions to Firestore, return doc data list."""
+    """Write generated missions to Firestore, return (doc_id, data) list."""
     now = datetime.now(timezone.utc)
     today = _today_str()
     stored = []
@@ -113,8 +113,10 @@ def _store_missions(col, mission_dicts: list) -> list:
             "category": m.get("category", "wellness"),
             "verification_type": None,
             "is_ai_generated": True,
+            "source_task_id": m.get("source_task_id"),   # deduplication key
+            "ai_reason": m.get("ai_reason", ""),          # why this mission was picked
             "status": "pending",
-            "stability_delta": float(m.get("stability_delta", 3)),
+            "stability_delta": float(m.get("stability_delta", 2)),
             "mission_date": today,
             "created_at": now,
             "completed_at": None,
@@ -139,13 +141,19 @@ def list_missions(uid: str = Depends(get_current_uid)):
 
 
 @router.post("/generate", response_model=List[MissionResponse])
-def generate_todays_missions(uid: str = Depends(get_current_uid)):
+def generate_todays_missions(
+    body: AIMissionRecommendRequest = AIMissionRecommendRequest(),
+    uid: str = Depends(get_current_uid),
+):
     """
-    Generate today's 3 AI missions using Gemini, personalised by score + interests.
-    No-ops and returns existing missions if already generated today.
-    Deletes previous days' missions first (midnight reset).
+    Generate today's 3 AI missions using rule-based task_logic, personalised by
+    interests + social style from Firestore profile. No Gemini call needed.
+
+    - Idempotent: returns existing missions if already generated today.
+    - Midnight reset: deletes previous days' missions before generating new ones.
+    - Deduplication: skips tasks the user has already completed (via source_task_id).
     """
-    profile = _require_mission_unlocked(uid)
+    _require_mission_unlocked(uid)
     col = missions_col(uid)
     today = _today_str()
 
@@ -158,8 +166,50 @@ def generate_todays_missions(uid: str = Depends(get_current_uid)):
     # Delete stale missions from previous days
     _delete_old_missions(col)
 
-    # Generate personalised missions
-    mission_dicts = generate_ai_missions(user_profile=profile, count=3)
+    # Build ai_logic-compatible profile from Firestore
+    user_profile = get_ai_user_profile(uid)
+
+    # Collect source_task_ids of already-completed AI missions → avoid re-recommending
+    completed_task_ids: list[str] = []
+    for doc in col.where(filter=FieldFilter("is_ai_generated", "==", True)).stream():
+        data = doc.to_dict() or {}
+        task_id = data.get("source_task_id")
+        if task_id and data.get("status") == "completed":
+            completed_task_ids.append(task_id)
+
+    # Rule-based recommendation (no Gemini, works offline)
+    result = recommend_tasks(
+        user_profile=user_profile,
+        completed_task_ids=completed_task_ids,
+        current_mood=body.current_mood,
+        count=3,
+    )
+
+    # Flatten recommend_tasks output into storable dicts
+    mission_dicts = []
+    for item in result.get("tasks", []):
+        task = item.get("task", {}) if isinstance(item, dict) and "task" in item else item
+        mission_dicts.append({
+            "title":          task.get("title", "Today's mission"),
+            "description":    task.get("description", ""),
+            "difficulty":     task.get("difficulty", "easy"),
+            "category":       task.get("category", "wellness"),
+            "source_task_id": task.get("id"),
+            "ai_reason":      item.get("reason", "") if isinstance(item, dict) else "",
+            "stability_delta": 2,   # SCORE_DELTA["ai_mission_complete"]
+        })
+
+    if not mission_dicts:
+        # Fallback: generic wellness mission
+        mission_dicts = [{
+            "title": "Take a mindful moment",
+            "description": "Step outside for 5 minutes and notice three things around you.",
+            "difficulty": "easy",
+            "category": "wellness",
+            "source_task_id": None,
+            "ai_reason": "fallback",
+            "stability_delta": 2,
+        }]
 
     stored = _store_missions(col, mission_dicts)
     return [doc_to_mission(doc_id, uid, data) for doc_id, data in stored]

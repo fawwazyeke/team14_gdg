@@ -45,10 +45,12 @@ def doc_to_mission(doc_id: str, uid: str, data: dict) -> dict:
         "description": data.get("description", ""),
         "difficulty": data.get("difficulty", "easy"),
         "category": data.get("category", "wellness"),
-        "verification_type": data.get("verification_type"),   # None 허용 (AI 미션)
+        "verification_type": data.get("verification_type"),    # None 허용 (AI 미션)
         "is_ai_generated": data.get("is_ai_generated", False),
         "status": data.get("status", "pending"),
         "stability_delta": data.get("stability_delta", 0),
+        "source_task_id": data.get("source_task_id"),          # deduplication key
+        "ai_reason": data.get("ai_reason"),                    # recommendation reason
         "created_at": ts_to_dt(data.get("created_at")),
         "completed_at": ts_to_dt(data.get("completed_at")) if data.get("completed_at") else None,
     }
