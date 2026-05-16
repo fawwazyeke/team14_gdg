@@ -16,7 +16,7 @@ import { nicknameFromEmail } from '../services/firebaseProfileService';
 import { colors } from '../theme/colors';
 
 const LoginScreen = () => {
-  const { user, needsProfile, profileNotice, signIn, signUp, completeProfile } = useAuth();
+  const { user, needsProfile, profileNotice, signIn, signUp, signInWithGoogle, completeProfile } = useAuth();
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,6 +38,24 @@ const LoginScreen = () => {
       } else {
         await signUp(email, password);
       }
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError('');
+
+    if (Platform.OS !== 'web') {
+      setError('Google sign-in is ready for web. Native Expo needs Android/iOS OAuth client IDs first.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await signInWithGoogle();
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -91,6 +109,20 @@ const LoginScreen = () => {
       <Text style={styles.subtitle}>
         Find small, real-world chances to practice connection in Korea and Japan.
       </Text>
+
+      <TouchableOpacity
+        style={[styles.googleButton, loading && styles.buttonDisabled]}
+        onPress={handleGoogle}
+        disabled={loading}
+      >
+        <Text style={styles.googleButtonText}>Continue with Google</Text>
+      </TouchableOpacity>
+
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
       <View style={styles.modeSwitch}>
         {['login', 'signup'].map((nextMode) => (
@@ -223,6 +255,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 14,
+  },
+  googleButton: {
+    borderWidth: 1.5,
+    borderColor: '#d0d0d0',
+    borderRadius: 14,
+    alignItems: 'center',
+    paddingVertical: 14,
+    marginBottom: 16,
+    backgroundColor: colors.surface,
+  },
+  googleButtonText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e0e0e0',
+  },
+  dividerText: {
+    color: colors.textLight,
+    fontSize: 12,
+    fontWeight: '700',
   },
   modeSwitch: {
     flexDirection: 'row',

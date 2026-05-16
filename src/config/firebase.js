@@ -4,8 +4,10 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   getReactNativePersistence,
+  GoogleAuthProvider,
   initializeAuth,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -33,6 +35,12 @@ try {
 
 export const firebaseAuth = auth;
 export const firebaseDb = getFirestore(firebaseApp);
+export const googleProvider = new GoogleAuthProvider();
 export const loginWithEmail = signInWithEmailAndPassword;
 export const createAccountWithEmail = createUserWithEmailAndPassword;
+export const loginWithGooglePopup = signInWithPopup;
 export const logoutFromFirebase = signOut;
+
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+});

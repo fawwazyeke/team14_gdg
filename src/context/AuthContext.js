@@ -4,7 +4,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import {
   createAccountWithEmail,
   firebaseAuth,
+  googleProvider,
   loginWithEmail,
+  loginWithGooglePopup,
   logoutFromFirebase,
 } from '../config/firebase';
 import {
@@ -72,6 +74,9 @@ export function AuthProvider({ children }) {
       },
       async signUp(email, password) {
         await createAccountWithEmail(firebaseAuth, email.trim(), password);
+      },
+      async signInWithGoogle() {
+        await loginWithGooglePopup(firebaseAuth, googleProvider);
       },
       async signOut() {
         await logoutFromFirebase(firebaseAuth);
