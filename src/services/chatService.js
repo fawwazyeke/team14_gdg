@@ -1,5 +1,10 @@
 import { apiFetch } from './backendClient';
 
+export async function getChatMemory() {
+  const data = await apiFetch('/ai/chat/memory');
+  return Array.isArray(data.history) ? data.history : [];
+}
+
 export async function sendMessage(userText, conversationHistory = [], userProfile = {}) {
   const data = await apiFetch('/ai/chat', {
     method: 'POST',

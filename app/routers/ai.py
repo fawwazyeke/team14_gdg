@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.dependencies import get_current_uid
-from app.services.ai_service import chat_with_ai, clear_memory
+from app.services.ai_service import chat_with_ai, clear_memory, get_memory
 
 router = APIRouter()
 
@@ -35,6 +35,12 @@ def ai_chat(body: AIChatRequest, uid: str = Depends(get_current_uid)):
       - safety_support           : 위기 상황 — 전문 지원 연결
     """
     return chat_with_ai(uid=uid, user_message=body.message)
+
+
+@router.get("/chat/memory")
+def chat_memory(uid: str = Depends(get_current_uid)):
+    """Return saved AI chat memory for restoring the visible chat history."""
+    return get_memory(uid)
 
 
 @router.delete("/chat/memory", status_code=204)

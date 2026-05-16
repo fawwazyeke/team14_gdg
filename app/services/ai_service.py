@@ -90,6 +90,15 @@ def _save_memory(uid: str, mem: SummaryBufferMemory) -> None:
     user_doc(uid).update({"ai_memory": mem.to_dict()})
 
 
+def get_memory(uid: str) -> dict:
+    """Return saved AI chat memory for rendering in the client."""
+    snap = user_doc(uid).get()
+    if not snap.exists:
+        return {"history": [], "summary": ""}
+    mem = SummaryBufferMemory.from_dict((snap.to_dict() or {}).get("ai_memory") or {})
+    return mem.to_dict()
+
+
 # ── AI 채팅 ───────────────────────────────────────────────────────────────────
 
 _FALLBACK_REPLY = {

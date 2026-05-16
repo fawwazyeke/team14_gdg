@@ -9,6 +9,7 @@ import { MOODS } from '../theme/doTheme';
 import { Card, Chip } from '../components/DoAtoms';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/backendClient';
+import { ensureBackendProfile } from '../services/onboardingSurveyService';
 import { saveUserProfile } from '../services/firebaseProfileService';
 
 const INTERESTS = [
@@ -80,10 +81,22 @@ export default function DoProfileScreen() {
   const [score, setScore] = useState(null);
 
   React.useEffect(() => {
-    apiFetch('/users/me')
-      .then(data => setScore(data.stability_score ?? 0))
-      .catch(() => setScore(0));
-  }, [user]);
+    if (!user || !name) return;
+
+    let mounted = true;
+    ensureBackendProfile({ nickname: name, interests, age: profile?.age })
+      .then(() => apiFetch('/users/me'))
+      .then(data => {
+        if (mounted) setScore(data.stability_score ?? 0);
+      })
+      .catch(() => {
+        if (mounted) setScore(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [interests, name, profile?.age, user]);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);

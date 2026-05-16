@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDoTheme } from '../context/DoThemeContext';
 import { CompanionSketch, PulseDot } from '../components/DoAtoms';
 import { useAuth } from '../context/AuthContext';
-import { sendMessage } from '../services/chatService';
+import { getChatMemory, sendMessage } from '../services/chatService';
 
 const SEED = [
   { id: '0', from: 'ai', text: "Hey. I'm glad you're here. How's today landing for you?" },
@@ -26,6 +26,25 @@ export default function DoChatScreen() {
   const historyRef = useRef([]);
 
   const userProfile = { interests: profile?.interests || [], nickname: profile?.nickname || '' };
+
+  useEffect(() => {
+    let mounted = true;
+    getChatMemory()
+      .then((history) => {
+        if (!mounted || history.length === 0) return;
+        historyRef.current = history.slice(-20);
+        const restored = history.slice(-20).map((turn, index) => ({
+          id: `saved-${index}`,
+          from: turn.role === 'assistant' ? 'ai' : 'me',
+          text: turn.content,
+        }));
+        setMessages(restored.length ? restored : SEED);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const send = useCallback(async () => {
     const text = draft.trim();
