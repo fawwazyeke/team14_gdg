@@ -77,8 +77,8 @@ def get_my_status(uid: str = Depends(get_current_uid)):
         stage=stage,
         can_use_ai_chat=True,
         can_do_missions=score >= 36,
-        can_recommend_users=score >= 61,
-        can_access_events=score >= 61,
+        can_recommend_users=score >= UNLOCK_THRESHOLD["user_chat"],         # 60
+        can_access_events=score >= UNLOCK_THRESHOLD["user_chat"],           # 60
         can_chat_with_users=score >= UNLOCK_THRESHOLD["user_chat"],       # 60
         can_access_gatherings=score >= UNLOCK_THRESHOLD["gathering"],     # 100
     )

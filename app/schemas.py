@@ -11,12 +11,12 @@ from pydantic import BaseModel
 VALID_DIFFICULTIES = {"easy", "normal", "hard"}
 VALID_VERIFICATION_TYPES = {"text", "photo"}  # AI 미션은 None (nullable)
 
-# 스테이지 기준점
+# 스테이지 기준점 (해금 기준과 동기화)
 STAGE_THRESHOLDS = {
     "AI_START": 0,
     "MISSION_PRACTICE": 36,
-    "READY_TO_CONNECT": 61,
-    "CONNECTING": 81,
+    "READY_TO_CONNECT": 60,   # 사람과 대화 해금
+    "CONNECTING": 100,         # 실제 모임 해금
 }
 
 # ── Score System ───────────────────────────────────────────────────────────────
@@ -28,7 +28,7 @@ SCORE_DELTA = {
     "ai_mission_complete":  1.5,   # AI 개인화 미션 완료
     "user_chat_per_person": 5.0,   # 사람과 대화 (1인당, 익명)
     "friend_added":         4.0,   # 새 친구 추가
-    "gathering_attend":     50.0,  # 실제 모임 참석
+    "gathering_attend":     20.0,  # 실제 모임 참석
 }
 
 # 기능 해금 점수 기준
@@ -47,10 +47,10 @@ PENALTY_BASE = {
 AI_PENALTY_TRUST_THRESHOLD = 5
 
 
-def score_to_stage(score: int) -> str:
-    if score >= 81:
+def score_to_stage(score: float) -> str:
+    if score >= 100:
         return "CONNECTING"
-    if score >= 61:
+    if score >= 60:
         return "READY_TO_CONNECT"
     if score >= 36:
         return "MISSION_PRACTICE"
