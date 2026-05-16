@@ -59,6 +59,7 @@ export default function DoLoginScreen({ initialMode = 'login' }) {
         await signUp(email, password);
       }
     } catch (e) {
+      console.error('Email auth failed:', e?.code || e?.message || e);
       setError(friendlyError(e));
     } finally {
       setLoading(false);

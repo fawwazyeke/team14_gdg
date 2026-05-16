@@ -119,7 +119,16 @@ function AppGate() {
   }
 
   // ── Unauthenticated ──
-  if (!user || needsProfile) {
+  if (user && needsProfile) {
+    return (
+      <SafeAreaProvider>
+        <FirebaseErrorBanner />
+        <DoLoginScreen initialMode="signup" />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!user) {
     // Still checking AsyncStorage
     if (authView === null) {
       return (
