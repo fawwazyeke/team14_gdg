@@ -1,3 +1,19 @@
+"""
+friends.py — 친구 관련 엔드포인트.
+
+Han이 관리하는 friendships 컬렉션 구조:
+  friendships/{friendship_id}: { user_ids: [uid1, uid2], created_at, ... }
+
+GET    /friends/suggested                        — 친구 추천
+POST   /friends/request/{target_uid}             — 친구 신청
+GET    /friends/pending                          — 대기 중 요청
+POST   /friends/accept/{from_uid}               — 수락
+POST   /friends/reject/{from_uid}               — 거절
+GET    /friends                                  — 친구 목록
+DELETE /friends/{friend_uid}                     — 친구 취소
+GET    /friends/me/anonymous-name/{friend_uid}   — 익명 이름 조회
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from google.cloud.firestore_v1.base_query import FieldFilter
 
@@ -54,26 +70,23 @@ def list_friends(uid: str = Depends(get_current_uid)):
     return friends_service.get_friends(uid)
 
 
-# ── 성진 v2: 친구 취소 + 익명 이름 조회 ──────────────────────────────────────
-
 @router.delete("/{friend_uid}", response_model=FriendUnfriendResponse)
 def unfriend(friend_uid: str, uid: str = Depends(get_current_uid)):
     """
     친구 취소.
-    friendships 컬렉션에서 두 uid가 모두 포함된 도큐먼트를 찾아 삭제.
     pair_key 방식(uid_a__uid_b) 또는 user_ids 배열 방식 모두 지원.
     """
     from app.services.friends_service import _pair_key
     col = friendships_col()
 
-    # Han pair_key 방식 먼저 시도
+    # pair_key 방식 먼저 시도
     pair_key = _pair_key(uid, friend_uid)
     doc_ref = col.document(pair_key)
     if doc_ref.get().exists:
         doc_ref.delete()
         return FriendUnfriendResponse(success=True, message="친구 관계가 삭제되었습니다.")
 
-    # 혹시 user_ids 배열 방식으로 저장된 경우 폴백
+    # user_ids 배열 방식 폴백
     docs = col.where(filter=FieldFilter("user_ids", "array_contains", uid)).stream()
     for doc in docs:
         data = doc.to_dict() or {}
@@ -87,8 +100,7 @@ def unfriend(friend_uid: str, uid: str = Depends(get_current_uid)):
 @router.get("/me/anonymous-name/{friend_uid}", response_model=AnonymousNameResponse)
 def get_anonymous_name(friend_uid: str, uid: str = Depends(get_current_uid)):
     """
-    내가 특정 친구를 부르는 익명 이름 반환.
-    같은 (나, 친구) 쌍은 항상 동일한 이름 반환 (결정론적).
+    내가 특정 친구를 부르는 익명 이름 반환 (결정론적).
     """
     name = generate_anonymous_name(my_uid=uid, friend_uid=friend_uid)
     return AnonymousNameResponse(friend_uid=friend_uid, anonymous_name=name)

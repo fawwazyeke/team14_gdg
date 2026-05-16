@@ -26,14 +26,9 @@ _MUSICAL_TERMS = [
 
 
 def generate_anonymous_name(my_uid: str, friend_uid: str) -> str:
-    """
-    my_uid 관점에서 friend_uid를 부르는 익명 이름 생성.
-    결정론적: 같은 입력이면 항상 같은 이름 반환.
-    """
+    """결정론적: 같은 입력이면 항상 같은 이름 반환."""
     raw = f"{my_uid}:{friend_uid}"
     digest = hashlib.sha256(raw.encode()).hexdigest()
-
     color_idx = int(digest[:8], 16) % len(_COLORS)
-    term_idx = int(digest[8:16], 16) % len(_MUSICAL_TERMS)
-
+    term_idx  = int(digest[8:16], 16) % len(_MUSICAL_TERMS)
     return f"{_COLORS[color_idx]} {_MUSICAL_TERMS[term_idx]}"

@@ -45,7 +45,7 @@ def create_profile(body: UserProfileCreate, uid: str = Depends(get_current_uid))
         "communication_style": body.communication_style,
         "age": body.age,
         "created_at": datetime.utcnow(),
-        # v2 신규 필드 초기화
+        # 신규 필드 초기화
         "streak_count": 0,
         "last_activity_date": None,
         "score_bar_visible": False,
@@ -81,10 +81,10 @@ def get_my_status(uid: str = Depends(get_current_uid)):
         stage=stage,
         can_use_ai_chat=True,
         can_do_missions=score >= 36,
-        can_recommend_users=score >= UNLOCK_THRESHOLD["user_chat"],
-        can_access_events=score >= UNLOCK_THRESHOLD["user_chat"],
-        can_chat_with_users=score >= UNLOCK_THRESHOLD["user_chat"],
-        can_access_gatherings=score >= UNLOCK_THRESHOLD["gathering"],
+        can_recommend_users=score >= UNLOCK_THRESHOLD["user_chat"],      # 60
+        can_access_events=score >= UNLOCK_THRESHOLD["user_chat"],            # 60
+        can_chat_with_users=score >= UNLOCK_THRESHOLD["user_chat"],         # 60
+        can_access_gatherings=score >= UNLOCK_THRESHOLD["gathering"],       # 100
     )
 
 
@@ -118,10 +118,16 @@ def get_my_trust(uid: str = Depends(get_current_uid)):
 def get_my_badge(uid: str = Depends(get_current_uid)):
     """
     점수 기반 뱃지(음자리표) 조회.
+
+
+    단계:
       0~99점    → 뱃지 없음
       100~499점 → 낮은음자리표
       500~999점 → 가온음자리표
       1000점+   → 높은음자리표
+
+
+    next_badge / points_needed 로 UI 프로그레스바 표현 가능.
     """
     snap = user_doc(uid).get()
     if not snap.exists:

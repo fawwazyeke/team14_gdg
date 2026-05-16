@@ -2,32 +2,15 @@
 moderation_service.py — 메시지 검열.
 
 ai_logic/moderation.py의 2-layer 시스템(키워드 + Gemini 분류)을 래핑.
-기존 공개 인터페이스(moderate_message) 유지.
+기존 공개 인터페이스(moderate_message / detect_toxicity_*) 유지.
 """
 
-import os
-
-from dotenv import load_dotenv
-
 from ai_logic.moderation import moderate, get_warning, SCORE_DEDUCTION
-
-load_dotenv()
-
-_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+from app.services.gemini_service import _get_client
+from app.schemas import ModerationResult
 
 
-def _get_client():
-    """google.genai.Client 생성. API 키 없으면 None."""
-    if not _GEMINI_API_KEY:
-        return None
-    try:
-        from google import genai
-        return genai.Client(api_key=_GEMINI_API_KEY)
-    except Exception:
-        return None
-
-
-# ── 기존 키워드 필터 (하위 호환 유지) ─────────────────────────────────────────
+# ── 기존 키워드 필터 (하위 호환 유지) ────────────────────────────────────────
 
 _BAD_WORDS             = ["badword1", "badword2"]
 _OFFLINE_MEETING_WORDS = ["meet offline", "come to my house", "phone number"]
@@ -49,24 +32,11 @@ def moderate_message(message: str) -> dict:
     return {"allowed": True, "reason": None, "message": None}
 
 
-# ── ai_logic.moderation 래퍼 ──────────────────────────────────────────────────
+# ── ai_logic.moderation 래퍼 ─────────────────────────────────────────────────
 
-def run_moderation(text: str, mode: str = "ai") -> dict:
-    """
-    ai_logic.moderation.moderate() 실행 후 dict 반환.
-
-    mode: "ai" (AI 채팅) | "p2p" (유저 간 채팅, 더 엄격)
-
-    반환:
-      action      : "allow" | "warn" | "severe_warn" | "crisis" | "block"
-      score_delta : int (0 또는 음수)
-      reason      : str
-      warning_msg : str
-      is_toxic    : bool
-      severity    : int
-    """
-    client = _get_client()
-    result = moderate(text, mode=mode, client=client)
+def _run_moderate(text: str, mode: str) -> dict:
+    """ai_logic.moderation.moderate() 실행. client=None → Layer 1만 수행."""
+    result = moderate(text, mode=mode, client=_get_client())
     return {
         "action":      result.action,
         "score_delta": result.score_delta,
@@ -75,3 +45,8 @@ def run_moderation(text: str, mode: str = "ai") -> dict:
         "is_toxic":    result.is_toxic,
         "severity":    result.severity,
     }
+
+
+def run_moderation(text: str, mode: str = "ai") -> dict:
+    """stability.py 페널티 엔드포인트에서 직접 호출하는 통합 인터페이스."""
+    return _run_moderate(text, mode=mode)

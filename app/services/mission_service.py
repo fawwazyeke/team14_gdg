@@ -76,6 +76,7 @@ def generate_rule_based_mission(
     completed_task_ids: Optional[list] = None,
     current_mood: Optional[str] = None,
 ) -> dict:
+    """ai_logic 규칙 기반 엔진으로 미션 1개 생성. Gemini 호출 없이 오프라인으로 작동."""
     return generate_rule_based_missions(user_profile, completed_task_ids, current_mood, count=1)[0]
 
 
@@ -93,8 +94,6 @@ def generate_ai_missions(
     score = float(user_profile.get("stability_score", 0))
     difficulty_note = _difficulty_instruction(score)
 
-    # Inject score + difficulty hint directly into user_profile so the
-    # prompt builder includes it in the profile block Gemini reads.
     enriched_profile = {
         **user_profile,
         "_difficulty_instruction": difficulty_note,
@@ -107,8 +106,6 @@ def generate_ai_missions(
         current_mood=current_mood,
         count=count,
     )
-
-    # Append the difficulty rule explicitly after the profile block
     prompt = prompt + f"\n\n## Difficulty calibration\n{difficulty_note}"
 
     result = generate_json(prompt=prompt, system_instruction=CHATBOT_SYSTEM_PROMPT)
@@ -119,7 +116,6 @@ def generate_ai_missions(
 
     missions = []
     for t in tasks[:count]:
-        # Gemini returns estimated_minutes; use it as a proxy for stability_delta
         raw_delta = t.get("stability_delta") or t.get("estimated_minutes") or 3
         missions.append({
             "title": t.get("title", "Today's mission"),

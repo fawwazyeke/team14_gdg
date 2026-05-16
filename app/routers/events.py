@@ -294,3 +294,4 @@ async def read_event(event_id: str):
 @router.post("/refresh", response_model=EventRefreshResult)
 async def refresh_event_cache(from_date: str | None = None, to_date: str | None = None):
     return await refresh_events(from_date=from_date, to_date=to_date)
+
