@@ -40,7 +40,7 @@ export const SURVEY_QUESTIONS = [
 ];
 
 // Default middle-range answers give ~41 stability points (enough to unlock missions at ≥36).
-const DEFAULT_SURVEY_ANSWERS = {
+export const DEFAULT_SURVEY_ANSWERS = {
   social_energy: 'small_group',
   conversation_comfort: 'casual_ok',
   event_readiness: 'workshop',
@@ -82,7 +82,7 @@ export async function ensureBackendProfile({ nickname, interests, age }) {
     console.warn('Default survey submission failed:', e.message);
   }
 
-  return created;
+  return apiFetch('/users/me').catch(() => created);
 }
 
 export async function submitOnboardingSurvey(answersByQuestion) {

@@ -11,7 +11,11 @@ import DoLandingScreen from './src/screens/DoLandingScreen';
 import DoLoginScreen from './src/screens/DoLoginScreen';
 import DoOnboardingScreen from './src/screens/DoOnboardingScreen';
 import { userStorageKeys } from './src/services/firebaseProfileService';
-import { ensureBackendProfile, submitOnboardingSurvey } from './src/services/onboardingSurveyService';
+import {
+  DEFAULT_SURVEY_ANSWERS,
+  ensureBackendProfile,
+  submitOnboardingSurvey,
+} from './src/services/onboardingSurveyService';
 import { colors } from './src/theme/colors';
 
 // Key stored once the landing screen has been dismissed
@@ -93,8 +97,15 @@ function AppGate() {
     await completeProfile(name, { interests, age });
 
     try {
-      await ensureBackendProfile({ nickname: name, interests, age });
-      await submitOnboardingSurvey(surveyAnswers);
+      const backendProfile = await ensureBackendProfile({ nickname: name, interests, age });
+      const answers = Object.keys(surveyAnswers || {}).length > 0
+        ? surveyAnswers
+        : backendProfile?.stability_score >= 36
+          ? null
+          : DEFAULT_SURVEY_ANSWERS;
+      if (answers) {
+        await submitOnboardingSurvey(answers);
+      }
     } catch (e) {
       console.warn('Backend onboarding call failed, will retry later:', e.message);
     }
