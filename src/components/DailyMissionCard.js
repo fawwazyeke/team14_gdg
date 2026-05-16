@@ -1,110 +1,161 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useAnimatedStyle, withSpring, useSharedValue } from 'react-native-reanimated';
 import { colors } from '../theme/colors';
+import { Ionicons } from '@expo/vector-icons';
 
-const DailyMissionCard = ({ title, description, xp, completed, onComplete }) => {
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const DailyMissionCard = ({ title, description, onComplete }) => {
+  const [isCompleted, setIsCompleted] = useState(false);
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
+  const handlePressIn = () => {
+    if (!isCompleted) scale.value = withSpring(0.95);
+  };
+
+  const handlePressOut = () => {
+    if (!isCompleted) {
+      scale.value = withSpring(1);
+      setIsCompleted(true);
+      if (onComplete) onComplete();
+    }
+  };
+
   return (
-    <View style={[styles.card, completed && styles.cardCompleted]}>
-      <View style={styles.headerRow}>
-        <Text style={[styles.title, completed && styles.titleCompleted]}>{title}</Text>
-        {xp != null && (
-          <View style={[styles.xpTag, completed && styles.xpTagCompleted]}>
-            <Text style={styles.xpText}>+{xp} XP</Text>
+    <Animated.View style={[styles.cardContainer, animatedStyle]}>
+      <LinearGradient
+        colors={isCompleted ? ['#F9FAFB', '#F3F4F6'] : ['#FFFFFF', '#FFF0F5']}
+        style={[styles.card, isCompleted && styles.cardCompleted]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.header}>
+          <View style={[styles.iconContainer, isCompleted && styles.iconContainerCompleted]}>
+            <Ionicons 
+              name={isCompleted ? "checkmark-circle" : "star"} 
+              size={20} 
+              color={isCompleted ? "#10B981" : colors.primary} 
+            />
           </View>
-        )}
-      </View>
-
-      <Text style={styles.description}>{description}</Text>
-
-      {completed ? (
-        <View style={styles.completedBadge}>
-          <Text style={styles.completedText}>✓ Completed!</Text>
+          <Text style={[styles.headerTitle, isCompleted && { color: '#10B981' }]}>
+            {isCompleted ? "Mission Accomplished" : "Daily Mission"}
+          </Text>
         </View>
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={onComplete}>
-          <Text style={styles.buttonText}>I Did It!</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+        
+        <Text style={[styles.title, isCompleted && styles.textCompleted]}>{title}</Text>
+        <Text style={[styles.description, isCompleted && styles.textCompleted]}>{description}</Text>
+        
+        <AnimatedTouchable
+          style={styles.button}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.9}
+          disabled={isCompleted}
+        >
+          <LinearGradient
+            colors={isCompleted ? ['#D1D5DB', '#9CA3AF'] : colors.gradientPrimary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.buttonGradient}
+          >
+            <Text style={styles.buttonText}>
+              {isCompleted ? "Completed" : "I Did It!"}
+            </Text>
+            {!isCompleted && <Ionicons name="checkmark-circle" size={20} color="#FFF" style={styles.buttonIcon} />}
+          </LinearGradient>
+        </AnimatedTouchable>
+      </LinearGradient>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  cardContainer: {
+    marginVertical: 12,
+    marginHorizontal: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+  },
   card: {
-    backgroundColor: colors.missionBackground,
-    padding: 16,
-    borderRadius: 12,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.secondary,
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardCompleted: {
-    opacity: 0.7,
-    borderLeftColor: '#aaa',
+    shadowOpacity: 0,
+    elevation: 1,
+    borderColor: '#E5E7EB',
   },
-  headerRow: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 126, 103, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  iconContainerCompleted: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)', // Soft green
+  },
+  headerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   title: {
-    fontSize: 17,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.text,
-    flex: 1,
-    marginRight: 8,
-  },
-  titleCompleted: {
-    textDecorationLine: 'line-through',
-    color: colors.textLight,
-  },
-  xpTag: {
-    backgroundColor: colors.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  xpTagCompleted: {
-    backgroundColor: '#ccc',
-  },
-  xpText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
+    marginBottom: 8,
+    lineHeight: 26,
   },
   description: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textLight,
-    marginBottom: 16,
-    lineHeight: 20,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  textCompleted: {
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
   },
   button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
-  completedBadge: {
-    backgroundColor: '#e6f4ea',
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  completedText: {
-    color: '#2e7d32',
-    fontWeight: '600',
-    fontSize: 15,
+  buttonIcon: {
+    marginLeft: 8,
   },
 });
 

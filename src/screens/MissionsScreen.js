@@ -1,70 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-} from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { colors } from '../theme/colors';
 import DailyMissionCard from '../components/DailyMissionCard';
-import { getDailyMissions } from '../services/missionsService';
+
+const MOCK_MISSIONS = [
+  { 
+    id: '1', 
+    title: 'Say hello to someone new', 
+    description: 'Send a message to a colleague or a neighbor you haven\'t spoken to in a while.' 
+  },
+  { 
+    id: '2', 
+    title: 'Take a 10-minute walk', 
+    description: 'Get some fresh air and observe the people and nature around you.' 
+  },
+  { 
+    id: '3', 
+    title: 'Find a local event', 
+    description: 'Check out the Events tab and find one gathering that sounds interesting to you.' 
+  },
+];
 
 const MissionsScreen = () => {
-  const [missions, setMissions] = useState([]);
-  const [completed, setCompleted] = useState({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getDailyMissions().then(data => {
-      setMissions(data);
-      setLoading(false);
-    });
-  }, []);
-
-  const handleComplete = (id) => {
-    setCompleted(prev => ({ ...prev, [id]: true }));
-  };
-
-  const completedCount = Object.keys(completed).length;
-  const totalXP = missions
-    .filter(m => completed[m.id])
-    .reduce((sum, m) => sum + m.xp, 0);
+  const renderItem = ({ item }) => (
+    <DailyMissionCard 
+      title={item.title} 
+      description={item.description} 
+    />
+  );
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.header}>Today's Missions</Text>
-          <Text style={styles.subheader}>
-            {completedCount} of {missions.length} completed
-          </Text>
-        </View>
-        {totalXP > 0 && (
-          <View style={styles.xpBadge}>
-            <Text style={styles.xpBadgeText}>+{totalXP} XP</Text>
-          </View>
-        )}
-      </View>
-
-      {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-      ) : (
-        <FlatList
-          data={missions}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <DailyMissionCard
-              title={item.title}
-              description={item.description}
-              xp={item.xp}
-              completed={!!completed[item.id]}
-              onComplete={() => handleComplete(item.id)}
-            />
-          )}
-          contentContainerStyle={styles.list}
-        />
-      )}
+      <Text style={styles.header}>Your Missions</Text>
+      <Text style={styles.subheader}>Small steps towards connection</Text>
+      <FlatList
+        data={MOCK_MISSIONS}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };
@@ -74,42 +49,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 8,
-  },
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.text,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    letterSpacing: -0.5,
   },
   subheader: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textLight,
-    marginTop: 2,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    marginTop: 4,
   },
-  xpBadge: {
-    backgroundColor: colors.secondary,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  xpBadgeText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  loader: {
-    marginTop: 40,
-  },
-  list: {
+  listContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
-    paddingTop: 8,
+    paddingBottom: 40,
   },
 });
 
