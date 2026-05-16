@@ -9,7 +9,10 @@ POST /stability/penalty/{context}    — 페널티 (ai_chat / user_chat)
 GET  /stability/streak               — 스트릭 조회
 """
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.dependencies import get_current_uid
 from app.schemas import (
@@ -27,6 +30,12 @@ from app.services.stability_service import (
     get_trust_profile,
 )
 from app.database import user_doc
+
+
+class PenaltyRequest(BaseModel):
+    content: Optional[str] = None          # 위반 메시지 원문 (DB 저장용)
+    room_id: Optional[str] = None          # 유저 채팅 방 ID (user_chat 전용)
+    moderation: Optional[dict] = None      # AI 모더레이션 결과 (선택)
 
 router = APIRouter()
 
@@ -99,21 +108,40 @@ def event_gathering_attend(
 # ── 페널티 ────────────────────────────────────────────────────────────────────
 
 @router.post("/penalty/ai-chat", response_model=PenaltyEventResponse)
-def penalty_ai_chat(uid: str = Depends(get_current_uid)):
+def penalty_ai_chat(
+    body: PenaltyRequest = PenaltyRequest(),
+    uid: str = Depends(get_current_uid),
+):
     """
     AI 대화 거친 언행 감지 시 호출.
-    Han/AI 채팅 서비스에서 detect_toxicity_ai_chat() 결과가 is_toxic=True 일 때.
+    - content 있으면 blocked_ai_messages 컬렉션에 실제 메시지 저장
+    - stability_logs에 점수 변동 기록
+    - user_profiles/{uid}.ai_penalty_count 증가
     """
-    return apply_penalty(uid, "ai_chat")
+    return apply_penalty(
+        uid, "ai_chat",
+        content=body.content,
+        moderation=body.moderation,
+    )
 
 
 @router.post("/penalty/user-chat", response_model=PenaltyEventResponse)
-def penalty_user_chat(uid: str = Depends(get_current_uid)):
+def penalty_user_chat(
+    body: PenaltyRequest = PenaltyRequest(),
+    uid: str = Depends(get_current_uid),
+):
     """
     실제 유저 간 대화 위반 감지 시 호출.
-    첫 1회: 경고(점수 차감 없음). 이후: -40 누적 가중.
+    - content 있으면 blocked_chat_messages 컬렉션에 저장 (기존 형식 + uid)
+    - 첫 1회: 경고(점수 차감 없음) / 이후: -40 누적 가중
+    - stability_logs에 기록
     """
-    return apply_penalty(uid, "user_chat")
+    return apply_penalty(
+        uid, "user_chat",
+        content=body.content,
+        room_id=body.room_id,
+        moderation=body.moderation,
+    )
 
 
 # ── 스트릭 조회 ───────────────────────────────────────────────────────────────

@@ -28,6 +28,12 @@ Firestore 컬렉션 구조 (성진 담당):
   user_profiles/{uid}/mission_records/{id}
     필드: mission_id, verified, verification_type, text, image_url, created_at
 
+최상위 위반 로그 컬렉션 (성진 추가):
+  blocked_ai_messages/{id}
+    uid, content, moderation, penalty_applied, ai_penalty_count, created_at
+  blocked_chat_messages/{id}   ← 기존 컬렉션 (matching_service.py 사용 중)
+    uid, room_id, content, moderation, action, penalty_applied, user_penalty_count, created_at
+
 건드리지 않는 컬렉션 (다른 팀원 담당):
   users/{uid}        ← fawwaz 로그인/프로필
   events/{id}        ← fawwaz 이벤트 파이프라인
@@ -62,6 +68,27 @@ def missions_col(uid: str):
 
 def mission_records_col(uid: str):
     return user_doc(uid).collection(COL_MISSION_RECORDS)
+
+
+# ── 위반/차단 메시지 최상위 컬렉션 ──────────────────────────────────────────
+# blocked_chat_messages/{id}  ← 기존 (matching_service.py 사용 중)
+#   user_id, room_id, content, moderation, created_at
+#   + uid (성진: 페널티 연동 시 추가)
+#
+# blocked_ai_messages/{id}    ← 신규 (AI 채팅 거친 언동)
+#   uid, content, moderation, penalty_applied, ai_penalty_count, created_at
+COL_BLOCKED_CHAT_MESSAGES = "blocked_chat_messages"
+COL_BLOCKED_AI_MESSAGES = "blocked_ai_messages"
+
+
+def blocked_chat_messages_col():
+    """기존 유저 간 채팅 차단 메시지. 페널티 연동 시 uid 필드 추가."""
+    return get_firestore().collection(COL_BLOCKED_CHAT_MESSAGES)
+
+
+def blocked_ai_messages_col():
+    """AI 채팅 거친 언동 로그. blocked_chat_messages와 동일한 형식."""
+    return get_firestore().collection(COL_BLOCKED_AI_MESSAGES)
 
 
 # ── Han 담당 컬렉션 — unfriend 삭제 시에만 접근 ──────────────────────────────
