@@ -9,14 +9,6 @@ import { useDoTheme } from '../context/DoThemeContext';
 import { Card, Chip } from '../components/DoAtoms';
 import { getEvents, EVENT_CATEGORIES } from '../services/eventsService';
 
-const CAT_COLORS = {
-  'Language Exchange': ['#A0C5C6', '#6FA3A4', '#4D8485'],
-  'Games & Hobbies':  ['#A8B8C0', '#7E94A1', '#566C7B'],
-  'Food & Cafe':      ['#F2C490', '#D49A5C', '#B07A3D'],
-  'Culture':          ['#C5B6D6', '#9D8CB8', '#7A6993'],
-  'Tech & Learning':  ['#A8C0AA', '#7A9C7F', '#5A7D60'],
-  'Outdoor & Sports': ['#A5B582', '#7A8E54', '#5C6F3B'],
-};
 
 const CITIES = [
   { id: 'seoul', label: 'Seoul', flag: '🇰🇷' },
@@ -57,22 +49,21 @@ function SkeletonCard({ P }) {
 
 // ─── Event card ─────────────────────────────────────────────────
 function EventCard({ event, P, rsvp, onToggle }) {
-  const imgColors = CAT_COLORS[event.category] || ['#C5B89F', '#9A8B70', '#6E5F47'];
   return (
     <Card P={P} style={{ overflow: 'hidden', marginBottom: 16 }}>
-      <LinearGradient colors={imgColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.eventImg}>
-        <View style={styles.catTag}>
-          <Text style={[styles.catTagText, { color: P.ink }]}>{event.emoji} {event.category}</Text>
-        </View>
-        {event.city ? (
-          <View style={[styles.catTag, { backgroundColor: 'rgba(0,0,0,0.25)' }]}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>
-              {event.city === 'seoul' ? '🇰🇷 Seoul' : '🇯🇵 Tokyo'}
-            </Text>
-          </View>
-        ) : null}
-      </LinearGradient>
       <View style={styles.eventBody}>
+        <View style={styles.eventTagRow}>
+          <View style={[styles.catTag, { backgroundColor: P.surface, borderColor: P.line, borderWidth: 1 }]}>
+            <Text style={[styles.catTagText, { color: P.inkSoft }]}>{event.emoji} {event.category}</Text>
+          </View>
+          {event.city ? (
+            <View style={[styles.catTag, { backgroundColor: P.surface, borderColor: P.line, borderWidth: 1 }]}>
+              <Text style={[styles.catTagText, { color: P.inkSoft }]}>
+                {event.city === 'seoul' ? '🇰🇷 Seoul' : '🇯🇵 Tokyo'}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         <Text style={[styles.eventTitle, { color: P.ink }]}>{event.title}</Text>
         {event.description ? (
           <Text style={[styles.eventVibe, { color: P.inkSoft }]} numberOfLines={2}>{event.description}</Text>
@@ -242,14 +233,8 @@ const styles = StyleSheet.create({
 
   skeletonCard: {},
 
-  eventImg: {
-    height: 130, justifyContent: 'space-between', flexDirection: 'row',
-    alignItems: 'flex-start', padding: 12,
-  },
-  catTag: {
-    backgroundColor: 'rgba(255,255,255,0.85)', paddingHorizontal: 12,
-    paddingVertical: 5, borderRadius: 999,
-  },
+  eventTagRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
+  catTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   catTagText: { fontSize: 12, fontWeight: '600' },
   eventBody: { padding: 18 },
   eventTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4, letterSpacing: -0.2 },
