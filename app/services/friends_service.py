@@ -1,3 +1,4 @@
+import hashlib
 import random
 from datetime import datetime, timezone
 from typing import Optional
@@ -31,6 +32,12 @@ ALIAS_NAMES = [
 
 def generate_alias() -> str:
     return random.choice(ALIAS_NAMES)
+
+
+def uid_alias(uid: str) -> str:
+    """Deterministic alias for a UID — consistent across suggestion refreshes."""
+    idx = int(hashlib.md5(uid.encode()).hexdigest(), 16) % len(ALIAS_NAMES)
+    return ALIAS_NAMES[idx]
 
 
 def _pair_key(uid_a: str, uid_b: str) -> str:
@@ -209,7 +216,7 @@ def get_suggested_friends(uid: str) -> list[dict]:
         shared = len(my_interests & set(d.get("interests") or []))
         candidates.append({
             "uid": other_uid,
-            "alias": "A fellow traveler",
+            "alias": uid_alias(other_uid),
             "shared_interests": shared,
             "score_diff": score_diff,
             "stability_score": d.get("stability_score") or 0,

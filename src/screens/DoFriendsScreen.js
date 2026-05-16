@@ -38,9 +38,6 @@ function SuggestedCard({ item, P, onAdd, adding }) {
           ? `${item.shared_interests} shared interest${item.shared_interests > 1 ? 's' : ''}`
           : 'Similar mindset'}
       </Text>
-      <Text style={[styles.suggestedScore, { color: P.inkMuted }]}>
-        Score {item.stability_score}
-      </Text>
       <TouchableOpacity onPress={onAdd} disabled={adding} activeOpacity={0.85} style={{ marginTop: 12, width: '100%' }}>
         <LinearGradient
           colors={adding ? [P.line, P.line] : [P.grad[0], P.grad[1]]}
@@ -280,7 +277,6 @@ const styles = StyleSheet.create({
   suggestedCard: { width: 160, padding: 16, alignItems: 'center' },
   suggestedAlias: { fontSize: 14, fontWeight: '600', marginTop: 10, textAlign: 'center', letterSpacing: -0.2 },
   suggestedMeta: { fontSize: 12, marginTop: 4, textAlign: 'center' },
-  suggestedScore: { fontSize: 11, marginTop: 2, textAlign: 'center' },
   addBtn: { borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
