@@ -1,0 +1,15 @@
+{
+  "buildCommand": "npm run build:web",
+  "installCommand": "npm ci",
+  "outputDirectory": "dist",
+  "framework": null,
+  "env": {
+    "EXPO_PUBLIC_API_BASE_URL": "https://web-production-efb69.up.railway.app"
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
