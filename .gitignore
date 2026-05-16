@@ -41,8 +41,27 @@ serviceAccountKey.json
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.pyo
 venv/
 .venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+
+# Uploads
+app/uploads/*
+!app/uploads/.gitkeep
+
+# Claude
+.claude/
 
 # typescript
 *.tsbuildinfo
