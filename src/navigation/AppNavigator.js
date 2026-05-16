@@ -1,69 +1,194 @@
 import React from 'react';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Circle } from 'react-native-svg';
 
-// Screens
-import MissionsScreen from '../screens/MissionsScreen';
-import ChatScreen from '../screens/ChatScreen';
-import EventsScreen from '../screens/EventsScreen';
-import { colors } from '../theme/colors';
+import DoChatScreen from '../screens/DoChatScreen';
+import DoMissionsScreen from '../screens/DoMissionsScreen';
+import DoGatheringsScreen from '../screens/DoGatheringsScreen';
+import DoFriendsScreen from '../screens/DoFriendsScreen';
+import DoFriendChatScreen from '../screens/DoFriendChatScreen';
+import DoProfileScreen from '../screens/DoProfileScreen';
+import { useDoTheme } from '../context/DoThemeContext';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
-const AppNavigator = () => {
+const ChatIcon   = (c, s) => <Svg width={s} height={s} viewBox="0 0 24 24" fill="none"><Path d="M4 6.5C4 5.1 5.1 4 6.5 4h11C18.9 4 20 5.1 20 6.5v8c0 1.4-1.1 2.5-2.5 2.5H10l-4 4v-4h-.5C4.1 17 4 15.9 4 14.5v-8z" stroke={c} strokeWidth="1.5" strokeLinejoin="round"/></Svg>;
+const TargetIcon = (c, s) => <Svg width={s} height={s} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><Circle cx="12" cy="12" r="5" stroke={c} strokeWidth="1.5"/><Circle cx="12" cy="12" r="1.5" fill={c}/></Svg>;
+const GatherIcon = (c, s) => <Svg width={s} height={s} viewBox="0 0 24 24" fill="none"><Path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke={c} strokeWidth="1.5" strokeLinecap="round"/><Circle cx="9" cy="7" r="4" stroke={c} strokeWidth="1.5"/><Path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke={c} strokeWidth="1.5" strokeLinecap="round"/></Svg>;
+const PeopleIcon = (c, s) => <Svg width={s} height={s} viewBox="0 0 24 24" fill="none"><Circle cx="9" cy="9" r="3" stroke={c} strokeWidth="1.5"/><Circle cx="16" cy="10" r="2.4" stroke={c} strokeWidth="1.5"/><Path d="M3 19c0-3 3-5 6-5s6 2 6 5M14.5 19c0-2 2-3.5 4-3.5s2.5 1.5 2.5 3" stroke={c} strokeWidth="1.5" strokeLinecap="round"/></Svg>;
+const PersonIcon = (c, s) => <Svg width={s} height={s} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="8" r="3.5" stroke={c} strokeWidth="1.5"/><Path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke={c} strokeWidth="1.5" strokeLinecap="round"/></Svg>;
+
+function TalkStack() {
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="TalkMain" component={DoChatScreen} />
+    </Stack.Navigator>
+  );
+}
 
-            if (route.name === 'Missions') {
-              iconName = focused ? 'flag' : 'flag-outline';
-            } else if (route.name === 'Chat') {
-              iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-            } else if (route.name === 'Events') {
-              iconName = focused ? 'calendar' : 'calendar-outline';
-            }
+function BridgesStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="BridgesMain" component={DoMissionsScreen} />
+    </Stack.Navigator>
+  );
+}
 
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textLight,
-          tabBarStyle: { 
-            backgroundColor: colors.surface,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            elevation: 8,
-            shadowColor: colors.shadow,
-            shadowOpacity: 0.1,
-            shadowOffset: { height: -2 },
-            paddingBottom: 5,
-            height: 60,
-          },
-          headerStyle: { backgroundColor: colors.surface },
-          headerTitleStyle: { color: colors.text, fontWeight: 'bold' },
+function GatherStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="GatherMain" component={DoGatheringsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function PeopleStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="PeopleMain" component={DoFriendsScreen} />
+      <Stack.Screen name="FriendChat" component={DoFriendChatScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function YouStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="YouMain" component={DoProfileScreen} />
+    </Stack.Navigator>
+  );
+}
+
+const TABS = [
+  { name: 'Do',      label: 'Do',      icon: ChatIcon,   Screen: TalkStack },
+  { name: 'Relate',  label: 'Relate',  icon: PeopleIcon, Screen: PeopleStack },
+  { name: 'Mission', label: 'Mission', icon: TargetIcon, Screen: BridgesStack },
+  { name: 'Find',    label: 'Find',    icon: GatherIcon, Screen: GatherStack },
+  { name: 'Soul',    label: 'Soul',    icon: PersonIcon, Screen: YouStack },
+];
+
+const linking = {
+  config: {
+    screens: {
+      Do: {
+        path: '',
+        screens: {
+          TalkMain: '',
+        },
+      },
+      Relate: {
+        path: 'relate',
+        screens: {
+          PeopleMain: '',
+          FriendChat: 'chat',
+        },
+      },
+      Mission: {
+        path: 'mission',
+        screens: {
+          BridgesMain: '',
+        },
+      },
+      Find: {
+        path: 'find',
+        screens: {
+          GatherMain: '',
+        },
+      },
+      Soul: {
+        path: 'soul',
+        screens: {
+          YouMain: '',
+        },
+      },
+    },
+  },
+};
+
+function DoTabBar({ state, navigation }) {
+  const { P } = useDoTheme();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.tabBarOuter, { paddingBottom: insets.bottom + 4, backgroundColor: 'transparent' }]}>
+      <View style={[styles.tabBarPill, { backgroundColor: P.surface, borderColor: P.line }]}>
+        {state.routes.map((route, index) => {
+          const tab = TABS[index];
+          const focused = state.index === index;
+          const color = focused ? '#fff' : P.inkSoft;
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={() => navigation.navigate(route.name)}
+              activeOpacity={0.8}
+              style={[styles.tabBtn, focused && styles.tabBtnFocused]}
+            >
+              {focused ? (
+                <LinearGradient
+                  colors={[P.grad[0], P.grad[1]]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.tabBtnActive}
+                >
+                  {tab.icon(color, 20)}
+                  <Text style={styles.tabLabelActive}>{tab.label}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.tabBtnInner}>
+                  {tab.icon(color, 20)}
+                  <Text style={[styles.tabLabel, { color: P.inkSoft }]} numberOfLines={1}>{tab.label}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
         })}
+      </View>
+    </View>
+  );
+}
+
+export default function AppNavigator() {
+  return (
+    <NavigationContainer linking={linking}>
+      <Tab.Navigator
+        tabBar={props => <DoTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
       >
-        <Tab.Screen 
-          name="Missions" 
-          component={MissionsScreen} 
-          options={{ title: 'Missions' }}
-        />
-        <Tab.Screen 
-          name="Chat" 
-          component={ChatScreen} 
-          options={{ title: 'Companion' }}
-        />
-        <Tab.Screen 
-          name="Events" 
-          component={EventsScreen} 
-          options={{ title: 'Gatherings' }}
-        />
+        {TABS.map(tab => (
+          <Tab.Screen key={tab.name} name={tab.name} component={tab.Screen} />
+        ))}
       </Tab.Navigator>
     </NavigationContainer>
   );
-};
+}
 
-export default AppNavigator;
+const styles = StyleSheet.create({
+  tabBarOuter: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    paddingHorizontal: 14, paddingTop: 8,
+  },
+  tabBarPill: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 999, borderWidth: 0.5,
+    padding: 6,
+    shadowColor: '#2A2420', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1, shadowRadius: 16, elevation: 8,
+  },
+  tabBtn: { flex: 1, alignItems: 'center' },
+  tabBtnFocused: { flex: 1.6 },
+  tabBtnActive: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999,
+    shadowColor: '#E08A5F', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8,
+  },
+  tabBtnInner: { paddingVertical: 8, paddingHorizontal: 4, alignItems: 'center', gap: 3 },
+  tabLabel: { fontSize: 11, fontWeight: '600' },
+  tabLabelActive: { color: '#fff', fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
+});
