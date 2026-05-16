@@ -4,21 +4,44 @@ import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import LoginScreen from './src/screens/LoginScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import { userStorageKeys } from './src/services/firebaseProfileService';
 import { colors } from './src/theme/colors';
 
-export default function App() {
-  // null = still loading from storage
+function AppGate() {
+  const { user, profile, loading, needsProfile, completeProfile } = useAuth();
   const [hasOnboarded, setHasOnboarded] = useState(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('has_onboarded').then(val => {
+    if (!user || needsProfile) {
+      setHasOnboarded(null);
+      return;
+    }
+
+    AsyncStorage.getItem(userStorageKeys(user.uid).onboarded).then((val) => {
       setHasOnboarded(val === 'true');
     });
-  }, []);
+  }, [needsProfile, user]);
 
-  if (hasOnboarded === null) {
+  const handleOnboardingComplete = async ({ name, interests }) => {
+    if (!user) {
+      return;
+    }
+
+    const keys = userStorageKeys(user.uid);
+    await AsyncStorage.multiSet([
+      [keys.name, name.trim()],
+      [keys.interests, JSON.stringify(interests)],
+      [keys.onboarded, 'true'],
+    ]);
+    await completeProfile(name, { interests });
+    setHasOnboarded(true);
+  };
+
+  if (loading || (user && !needsProfile && hasOnboarded === null)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -28,10 +51,21 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {hasOnboarded
-        ? <AppNavigator />
-        : <OnboardingScreen onComplete={() => setHasOnboarded(true)} />
-      }
+      {!user || needsProfile ? (
+        <LoginScreen />
+      ) : hasOnboarded ? (
+        <AppNavigator />
+      ) : (
+        <OnboardingScreen initialName={profile?.nickname || ''} onComplete={handleOnboardingComplete} />
+      )}
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppGate />
+    </AuthProvider>
   );
 }

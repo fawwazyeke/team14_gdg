@@ -9,13 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme/colors';
 
 const INTERESTS = ['Sports', 'Music', 'Gaming', 'Art', 'Books', 'Nature', 'Food', 'Tech'];
 
-const OnboardingScreen = ({ onComplete }) => {
-  const [name, setName] = useState('');
+const OnboardingScreen = ({ initialName = '', onComplete }) => {
+  const [name, setName] = useState(initialName);
   const [selectedInterests, setSelectedInterests] = useState([]);
 
   const toggleInterest = (interest) => {
@@ -28,12 +27,7 @@ const OnboardingScreen = ({ onComplete }) => {
 
   const handleStart = async () => {
     if (!name.trim()) return;
-    await AsyncStorage.multiSet([
-      ['user_name', name.trim()],
-      ['user_interests', JSON.stringify(selectedInterests)],
-      ['has_onboarded', 'true'],
-    ]);
-    onComplete();
+    onComplete({ name: name.trim(), interests: selectedInterests });
   };
 
   return (

@@ -8,28 +8,42 @@ import {
   TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
+import { userStorageKeys } from '../services/firebaseProfileService';
 import { colors } from '../theme/colors';
 
 const INTERESTS = ['Sports', 'Music', 'Gaming', 'Art', 'Books', 'Nature', 'Food', 'Tech'];
 
 const ProfileScreen = () => {
+  const { user, profile, signOut, completeProfile } = useAuth();
   const [name, setName] = useState('');
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet(['user_name', 'user_interests']).then(pairs => {
-      setName(pairs[0][1] || '');
+    if (!user) {
+      return;
+    }
+
+    const keys = userStorageKeys(user.uid);
+    AsyncStorage.multiGet([keys.name, keys.interests]).then(pairs => {
+      setName(pairs[0][1] || profile?.nickname || '');
       setSelectedInterests(JSON.parse(pairs[1][1] || '[]'));
     });
-  }, []);
+  }, [profile, user]);
 
   const save = async () => {
+    if (!user) {
+      return;
+    }
+
+    const keys = userStorageKeys(user.uid);
     await AsyncStorage.multiSet([
-      ['user_name', name],
-      ['user_interests', JSON.stringify(selectedInterests)],
+      [keys.name, name],
+      [keys.interests, JSON.stringify(selectedInterests)],
     ]);
+    await completeProfile(name, { interests: selectedInterests });
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -103,6 +117,10 @@ const ProfileScreen = () => {
 
       <TouchableOpacity style={styles.saveButton} onPress={save}>
         <Text style={styles.saveButtonText}>Save Interests</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
+        <Text style={styles.signOutButtonText}>Sign out</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -224,6 +242,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  signOutButton: {
+    marginTop: 12,
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 30,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#d0d0d0',
+  },
+  signOutButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

@@ -1,10 +1,16 @@
-"""Firebase Admin SDK 초기화 모듈.
+"""Firebase Admin SDK initialization.
 
-serviceAccountKey.json 또는 GOOGLE_APPLICATION_CREDENTIALS 환경변수로 인증.
+Frontend login uses the Firebase client SDK. The backend verifies those same
+Firebase Auth ID tokens and reads/writes Firestore with Admin credentials.
 """
+import json
 import os
+
 import firebase_admin
+from dotenv import load_dotenv
 from firebase_admin import credentials, firestore, auth
+
+load_dotenv()
 
 _app: firebase_admin.App | None = None
 
@@ -14,9 +20,25 @@ def _get_app() -> firebase_admin.App:
     if _app is not None:
         return _app
 
-    key_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "serviceAccountKey.json")
-    cred = credentials.Certificate(key_path)
-    _app = firebase_admin.initialize_app(cred)
+    project_id = os.getenv("FIREBASE_PROJECT_ID")
+    options = {"projectId": project_id} if project_id else None
+
+    service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+    service_account_file = (
+        os.getenv("FIREBASE_SERVICE_ACCOUNT_FILE")
+        or os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+        or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        or ("serviceAccountKey.json" if os.path.exists("serviceAccountKey.json") else None)
+    )
+
+    if service_account_json:
+        cred = credentials.Certificate(json.loads(service_account_json))
+    elif service_account_file:
+        cred = credentials.Certificate(service_account_file)
+    else:
+        cred = credentials.ApplicationDefault()
+
+    _app = firebase_admin.initialize_app(cred, options)
     return _app
 
 

@@ -36,6 +36,8 @@ yarn-error.*
 
 # Firebase service account key (NEVER commit this)
 serviceAccountKey.json
+firebase-service-account*.json
+service-account*.json
 
 # Python
 __pycache__/
