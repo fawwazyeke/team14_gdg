@@ -5,21 +5,32 @@ from typing import Optional
 from app.database import user_doc, user_profiles_col
 from app.firebase import get_firestore
 
-ADJECTIVES = [
-    "Quiet", "Gentle", "Soft", "Warm", "Still", "Calm", "Bright",
-    "Tender", "Kind", "Clear", "Slow", "Open", "Bold", "Steady",
-    "Humble", "Earnest", "Curious", "Patient", "Wandering", "Honest",
-]
-
-NOUNS = [
-    "Shore", "Dawn", "Harbor", "River", "Field", "Path", "Bridge",
-    "Garden", "Stone", "Cloud", "Meadow", "Valley", "Ember", "Lantern",
-    "Willow", "Pebble", "Bloom", "Tide", "Hollow", "Summit",
+ALIAS_NAMES = [
+    "Quiet Shore", "Gentle Dawn", "Soft River", "Warm Hollow", "Still Meadow",
+    "Calm Ember", "Bright Tide", "Tender Path", "Kind Summit", "Clear Willow",
+    "Slow Harbor", "Open Field", "Bold Creek", "Steady Bridge", "Humble Stone",
+    "Earnest Cloud", "Curious Bloom", "Patient Valley", "Wandering Lantern", "Honest Pebble",
+    "Amber Dusk", "Silver Fog", "Golden Reed", "Fading Light", "Rising Mist",
+    "Hollow Wind", "Soft Ember", "Pale Moon", "Gentle Creek", "Warm Dune",
+    "Distant Shore", "Hidden Path", "Quiet Peak", "Slow Current", "Deep Willow",
+    "Open Tide", "Lonely Birch", "Still Water", "Brave Finch", "Tender Root",
+    "Small Fire", "Pale Bloom", "Kind Hollow", "Calm Ridge", "Bright Fern",
+    "Wandering Brook", "Humble Flame", "Clear Pebble", "Steady Rain", "Earnest Fog",
+    "Woven Light", "Bare Branch", "First Snow", "Muted Bell", "Lone Sparrow",
+    "Soft Glow", "Salt Wind", "Cracked Clay", "Dark Moss", "Old Stone",
+    "New Leaf", "Faint Echo", "Slow Drift", "Tall Reed", "Deep Shade",
+    "Warm Dust", "Pale Creek", "Broken Tide", "Quiet Ash", "Gentle Slope",
+    "Amber Reed", "Silver Path", "Hollow Rain", "Soft Dune", "Rising Fern",
+    "Open Smoke", "Distant Bell", "Hidden Creek", "Pale Ridge", "Small Ember",
+    "Kind Rain", "Brave Moss", "Tender Fog", "Clear Shore", "Steady Bloom",
+    "Wandering Dust", "Humble Dawn", "Lone Birch", "Earnest Reed", "Woven Stone",
+    "Bare Field", "First Light", "Muted Creek", "Salt Hollow", "Cracked Ridge",
+    "Dark Willow", "Old Tide", "New Flame", "Faint Shore", "Slow Spark",
 ]
 
 
 def generate_alias() -> str:
-    return f"{random.choice(ADJECTIVES)} {random.choice(NOUNS)}"
+    return random.choice(ALIAS_NAMES)
 
 
 def _pair_key(uid_a: str, uid_b: str) -> str:
