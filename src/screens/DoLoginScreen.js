@@ -220,7 +220,7 @@ function friendlyError(e) {
   if (code.includes('auth/weak-password')) return 'Use at least 6 characters for your password.';
   if (code.includes('auth/network-request-failed')) return 'Network error. Check your connection.';
   if (code.includes('auth/too-many-requests')) return 'Too many attempts. Please wait a moment.';
-  if (code.includes('auth/argument-error')) return 'Google sign-in needs the latest web auth build. Redeploy Vercel and try again.';
+  if (code.includes('auth/argument-error')) return 'Google sign-in could not start in this browser. Try refreshing once or use email/password.';
   return code ? `Something went wrong: ${code}` : 'Something went wrong. Please try again.';
 }
 
