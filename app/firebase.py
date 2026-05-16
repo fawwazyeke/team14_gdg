@@ -53,5 +53,10 @@ def verify_token(id_token: str) -> dict:
     return auth.verify_id_token(id_token)
 
 
-# Module-level db alias for compatibility with Han's services
-db = get_firestore()
+class _LazyDb:
+    """Proxy so `from app.firebase import db` works without eager initialization."""
+    def __getattr__(self, name):
+        return getattr(get_firestore(), name)
+
+
+db = _LazyDb()

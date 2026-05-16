@@ -39,6 +39,14 @@ export const SURVEY_QUESTIONS = [
   },
 ];
 
+// Default middle-range answers give ~41 stability points (enough to unlock missions at ≥36).
+const DEFAULT_SURVEY_ANSWERS = {
+  social_energy: 'small_group',
+  conversation_comfort: 'casual_ok',
+  event_readiness: 'workshop',
+  follow_up_confidence: 'say_thanks',
+};
+
 export async function ensureBackendProfile({ nickname, interests }) {
   try {
     return await apiFetch('/users/me');
@@ -48,8 +56,9 @@ export async function ensureBackendProfile({ nickname, interests }) {
     }
   }
 
+  let created;
   try {
-    return await apiFetch('/users', {
+    created = await apiFetch('/users', {
       method: 'POST',
       body: JSON.stringify({
         nickname,
@@ -64,6 +73,15 @@ export async function ensureBackendProfile({ nickname, interests }) {
     }
     return apiFetch('/users/me');
   }
+
+  // Submit default survey so new users start with a usable stability score.
+  try {
+    await submitOnboardingSurvey(DEFAULT_SURVEY_ANSWERS);
+  } catch (e) {
+    console.warn('Default survey submission failed:', e.message);
+  }
+
+  return created;
 }
 
 export async function submitOnboardingSurvey(answersByQuestion) {

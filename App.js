@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DoThemeProvider } from './src/context/DoThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import LoginScreen from './src/screens/LoginScreen';
+import DoLoginScreen from './src/screens/DoLoginScreen';
 import DoOnboardingScreen from './src/screens/DoOnboardingScreen';
 import { userStorageKeys } from './src/services/firebaseProfileService';
 import { ensureBackendProfile, submitOnboardingSurvey } from './src/services/onboardingSurveyService';
@@ -26,10 +26,12 @@ function FirebaseErrorBanner() {
 function AppGate() {
   const { user, profile, loading, needsProfile, completeProfile } = useAuth();
   const [hasOnboarded, setHasOnboarded] = useState(null);
+  const backendSyncedRef = useRef(false);
 
   useEffect(() => {
     if (!user || needsProfile) {
       setHasOnboarded(null);
+      backendSyncedRef.current = false;
       return;
     }
 
@@ -37,7 +39,6 @@ function AppGate() {
       if (val === 'true') {
         setHasOnboarded(true);
       } else if (profile?.nickname) {
-        // Profile already exists in Firestore — user has onboarded on another device or AsyncStorage was cleared
         AsyncStorage.setItem(userStorageKeys(user.uid).onboarded, 'true');
         setHasOnboarded(true);
       } else {
@@ -46,10 +47,17 @@ function AppGate() {
     });
   }, [needsProfile, profile, user]);
 
+  // Ensure backend profile exists whenever the user reaches the main app.
+  // ensureBackendProfile is idempotent — safe to call every login.
+  useEffect(() => {
+    if (!user || !hasOnboarded || !profile?.nickname || backendSyncedRef.current) return;
+    backendSyncedRef.current = true;
+    ensureBackendProfile({ nickname: profile.nickname, interests: profile.interests || [] })
+      .catch((e) => console.warn('Backend profile sync failed (will retry next launch):', e.message));
+  }, [user, hasOnboarded, profile]);
+
   const handleOnboardingComplete = async ({ name, interests, surveyAnswers }) => {
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
     await completeProfile(name, { interests });
 
@@ -66,6 +74,7 @@ function AppGate() {
       [keys.interests, JSON.stringify(interests)],
       [keys.onboarded, 'true'],
     ]);
+    backendSyncedRef.current = true;
     setHasOnboarded(true);
   };
 
@@ -81,7 +90,7 @@ function AppGate() {
     <SafeAreaProvider>
       <FirebaseErrorBanner />
       {!user || needsProfile ? (
-        <LoginScreen />
+        <DoLoginScreen />
       ) : hasOnboarded ? (
         <AppNavigator />
       ) : (
