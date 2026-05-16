@@ -9,10 +9,12 @@ import { useDoTheme } from '../context/DoThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { nicknameFromEmail } from '../services/firebaseProfileService';
 
+const IS_WEB = Platform.OS === 'web';
+
 export default function DoLoginScreen() {
   const { P } = useDoTheme();
   const insets = useSafeAreaInsets();
-  const { user, needsProfile, signIn, signUp, completeProfile } = useAuth();
+  const { user, needsProfile, signIn, signUp, signInWithGoogle, completeProfile } = useAuth();
 
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
@@ -25,6 +27,22 @@ export default function DoLoginScreen() {
     () => nickname || user?.displayName || nicknameFromEmail(user?.email || email),
     [email, nickname, user],
   );
+
+  const handleGoogle = async () => {
+    if (!IS_WEB) {
+      setError('Google sign-in works on the web version. Use email/password on mobile.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuth = async () => {
     if (!email.trim() || !password) {
@@ -124,6 +142,22 @@ export default function DoLoginScreen() {
           <Text style={[styles.sub, { color: P.inkSoft }]}>
             Small, real steps toward connection — in Korea and beyond.
           </Text>
+
+          {/* Google sign-in */}
+          <TouchableOpacity
+            onPress={handleGoogle}
+            disabled={loading}
+            activeOpacity={0.8}
+            style={[styles.googleBtn, { backgroundColor: P.surface, borderColor: P.line }]}
+          >
+            <Text style={[styles.googleBtnText, { color: P.ink }]}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          <View style={[styles.dividerRow, { marginBottom: 16 }]}>
+            <View style={[styles.dividerLine, { backgroundColor: P.line }]} />
+            <Text style={[styles.dividerLabel, { color: P.inkMuted }]}>or</Text>
+            <View style={[styles.dividerLine, { backgroundColor: P.line }]} />
+          </View>
 
           {/* Mode toggle */}
           <View style={[styles.toggle, { backgroundColor: P.surface, borderColor: P.line }]}>
@@ -234,4 +268,13 @@ const styles = StyleSheet.create({
 
   hint: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
   error: { color: '#b3261e', fontSize: 13, marginBottom: 12, textAlign: 'center' },
+
+  googleBtn: {
+    borderWidth: 1, borderRadius: 999,
+    paddingVertical: 14, alignItems: 'center', marginBottom: 16,
+  },
+  googleBtnText: { fontSize: 15, fontWeight: '600' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dividerLine: { flex: 1, height: 1 },
+  dividerLabel: { fontSize: 12, fontWeight: '600' },
 });

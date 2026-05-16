@@ -38,7 +38,8 @@ function AppGate() {
     AsyncStorage.getItem(userStorageKeys(user.uid).onboarded).then((val) => {
       if (val === 'true') {
         setHasOnboarded(true);
-      } else if (profile?.nickname) {
+      } else if (profile?.interests?.length > 0) {
+        // Interests set means onboarding was completed (possibly on another device)
         AsyncStorage.setItem(userStorageKeys(user.uid).onboarded, 'true');
         setHasOnboarded(true);
       } else {
