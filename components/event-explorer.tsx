@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthButton } from "@/components/auth-button";
 import { getDisplayCategory, getOrderedCategories } from "@/lib/events/categories";
 import type { NormalizedEvent } from "@/lib/events/types";
 import { CalendarDays, Check, ChevronDown, MapPin, RefreshCcw, Search, Sparkles, UsersRound } from "lucide-react";
@@ -119,10 +120,13 @@ export function EventExplorer({ initialEvents, initialWindow }: Props) {
           <p className="eyebrow">Do / 道 / 도</p>
           <h1>Find the way back into the world.</h1>
         </div>
-        <button className="icon-button" onClick={refreshEvents} disabled={refreshing} title="Refresh events">
-          <RefreshCcw size={16} />
-          <span>{refreshing ? "Refreshing" : "Refresh"}</span>
-        </button>
+        <div className="top-actions">
+          <button className="icon-button" onClick={refreshEvents} disabled={refreshing} title="Refresh events">
+            <RefreshCcw size={16} />
+            <span>{refreshing ? "Refreshing" : "Refresh"}</span>
+          </button>
+          <AuthButton />
+        </div>
       </header>
 
       <section className="minimal-toolbar" aria-label="Event filters">

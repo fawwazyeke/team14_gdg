@@ -30,6 +30,24 @@ Copy `.env.example` to `.env.local` and fill in keys when available.
 - Seoul Open Data Plaza `culturalEventInfo`, when `SEOUL_OPEN_DATA_KEY` is set.
 - KTO/TourAPI and connpass, when their keys are set.
 
+## Firebase profile database
+
+The login flow stores first-time user nicknames in Firestore at `users/{uid}`.
+
+Enable Firebase Authentication providers first, then create a Firestore database and use rules like:
+
+```txt
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
 ## Commands
 
 ```bash
