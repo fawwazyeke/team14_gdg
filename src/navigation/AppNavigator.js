@@ -7,6 +7,7 @@ import ChatScreen from '../screens/ChatScreen';
 import MissionsScreen from '../screens/MissionsScreen';
 import EventsScreen from '../screens/EventsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import DebugScreen from '../screens/DebugScreen';
 import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -61,6 +62,14 @@ const AppNavigator = () => (
         options={{
           title: 'Profile',
           tabBarIcon: tabIcon('person'),
+        }}
+      />
+      <Tab.Screen
+        name="Debug"
+        component={DebugScreen}
+        options={{
+          title: 'Feature Check',
+          tabBarIcon: tabIcon('construct'),
         }}
       />
     </Tab.Navigator>
