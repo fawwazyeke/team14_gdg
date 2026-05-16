@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts } from 'expo-font';
-import { DM_Sans_400Regular, DM_Sans_600SemiBold } from '@expo-google-fonts/dm-sans';
+import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces';
 import { buildPalette } from '../theme/doTheme';
 import { PrimaryButton, GhostButton, Chip, ProgressDots } from '../components/DoAtoms';
@@ -139,7 +139,7 @@ function StepInterests({ interests, setInterests, onNext, onBack }) {
 
 // ─── Root Onboarding ────────────────────────────────────────────
 export default function DoOnboardingScreen({ initialName = '', onComplete }) {
-  const [fontsLoaded] = useFonts({ DM_Sans_400Regular, DM_Sans_600SemiBold, Fraunces_400Regular });
+  const [fontsLoaded] = useFonts({ DMSans_400Regular, DMSans_600SemiBold, Fraunces_400Regular });
   const [step, setStep] = useState(0);
   const [name, setName] = useState(initialName);
   const [interests, setInterests] = useState([]);
@@ -207,26 +207,26 @@ const styles = StyleSheet.create({
     lineHeight: 90, letterSpacing: -3,
   },
   welcomeSubtitle: {
-    fontFamily: 'DM_Sans_400Regular', fontSize: 17, color: P.inkSoft,
+    fontFamily: 'DMSans_400Regular', fontSize: 17, color: P.inkSoft,
     textAlign: 'center', lineHeight: 26, marginTop: 18, maxWidth: 260,
   },
 
   stepFooter: { paddingHorizontal: 24, gap: 16 },
-  disclaimer: { fontFamily: 'DM_Sans_400Regular', fontSize: 13, color: P.inkMuted, textAlign: 'center' },
+  disclaimer: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: P.inkMuted, textAlign: 'center' },
 
   backBtn: { paddingHorizontal: 24, paddingVertical: 8, marginBottom: 4 },
-  backBtnText: { fontFamily: 'DM_Sans_400Regular', fontSize: 15, fontWeight: '500' },
+  backBtnText: { fontFamily: 'DMSans_400Regular', fontSize: 15, fontWeight: '500' },
 
   stepBody: { paddingHorizontal: 32, paddingTop: 12, paddingBottom: 20 },
-  stepTitle: { fontFamily: 'DM_Sans_600SemiBold', fontSize: 30, lineHeight: 36, letterSpacing: -0.5, marginBottom: 10 },
-  stepSub: { fontFamily: 'DM_Sans_400Regular', fontSize: 15, lineHeight: 23, marginBottom: 32 },
+  stepTitle: { fontFamily: 'DMSans_600SemiBold', fontSize: 30, lineHeight: 36, letterSpacing: -0.5, marginBottom: 10 },
+  stepSub: { fontFamily: 'DMSans_400Regular', fontSize: 15, lineHeight: 23, marginBottom: 32 },
 
   nameInput: {
     fontFamily: 'Fraunces_400Regular', fontSize: 38, letterSpacing: -0.8,
     borderBottomWidth: 1.5, paddingVertical: 10, paddingHorizontal: 4,
     backgroundColor: 'transparent',
   },
-  inputHint: { fontFamily: 'DM_Sans_400Regular', fontSize: 13, marginTop: 14 },
+  inputHint: { fontFamily: 'DMSans_400Regular', fontSize: 13, marginTop: 14 },
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 16 },
 
