@@ -26,11 +26,14 @@ def doc_to_user_profile(uid: str, data: dict) -> dict:
         "nickname": data.get("nickname", ""),
         "country": data.get("country", ""),
         "language": data.get("language", ""),
-        "stability_score": data.get("stability_score", 0),
+        "stability_score": float(data.get("stability_score", 0)),
         "stage": data.get("stage", "AI_START"),
         "interests": data.get("interests"),
         "communication_style": data.get("communication_style"),
         "created_at": ts_to_dt(data.get("created_at")),
+        # 신규 필드
+        "streak_count": data.get("streak_count", 0),
+        "score_bar_visible": data.get("score_bar_visible", False),
     }
 
 

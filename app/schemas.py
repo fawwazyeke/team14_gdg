@@ -19,6 +19,33 @@ STAGE_THRESHOLDS = {
     "CONNECTING": 81,
 }
 
+# ── Score System ───────────────────────────────────────────────────────────────
+
+# 점수 증가량
+SCORE_DELTA = {
+    "ai_chat":              0.5,   # AI와 대화 1회
+    "mission_complete":     1.0,   # 기본 미션 완료
+    "ai_mission_complete":  1.5,   # AI 개인화 미션 완료
+    "user_chat_per_person": 5.0,   # 사람과 대화 (1인당, 익명)
+    "friend_added":         4.0,   # 새 친구 추가
+    "gathering_attend":     50.0,  # 실제 모임 참석
+}
+
+# 기능 해금 점수 기준
+UNLOCK_THRESHOLD = {
+    "user_chat": 60,    # 사람과 대화 해금
+    "gathering": 100,   # 실제 모임 참석 해금
+}
+
+# 페널티 기준량 (cumulative 가중 적용됨)
+PENALTY_BASE = {
+    "ai_chat_rough":       0.1,   # AI 대화 거친 언행 기본값
+    "user_chat_violation": 40.0,  # 실제 대화 위반 (1회=경고, 이후 차감)
+}
+
+# AI 페널티 누적 횟수 기준 — 이 이상이면 신뢰도 낮음
+AI_PENALTY_TRUST_THRESHOLD = 5
+
 
 def score_to_stage(score: int) -> str:
     if score >= 81:
@@ -45,23 +72,26 @@ class UserProfileResponse(BaseModel):
     nickname: str
     country: str
     language: str
-    stability_score: int
+    stability_score: float       # float: +0.5 단위 지원
     stage: str
     interests: Optional[Any] = None
     communication_style: Optional[str] = None
     created_at: datetime
+    streak_count: int = 0
+    score_bar_visible: bool = False
 
 
 class UserStatusResponse(BaseModel):
     uid: str
-    stability_score: int
+    stability_score: float       # float: +0.5 단위 지원
     stage: str
     # 기능 잠금 해제 플래그
     can_use_ai_chat: bool        # AI_START 이상 (항상 true)
     can_do_missions: bool        # MISSION_PRACTICE 이상 (score >= 36)
     can_recommend_users: bool    # READY_TO_CONNECT 이상 (score >= 61)
     can_access_events: bool      # READY_TO_CONNECT 이상 (score >= 61)
-    can_chat_with_users: bool    # CONNECTING (score >= 81)
+    can_chat_with_users: bool    # score >= 60 (사람과 대화 해금)
+    can_access_gatherings: bool  # score >= 100 (실제 모임 참석 해금)
 
 
 # ── Survey (온보딩) ────────────────────────────────────────────────────────────
@@ -159,3 +189,71 @@ class RecordWithMissionResponse(BaseModel):
 
 
 # Chat 관련 스키마는 Han 담당 (ai_chat_messages, chat_rooms, friendships)
+
+# ── Score Events ───────────────────────────────────────────────────────────────
+
+class ScoreEventResponse(BaseModel):
+    uid: str
+    event: str
+    delta: float
+    stability_score: float
+    stage: str
+    streak_count: int
+
+
+class StreakResponse(BaseModel):
+    uid: str
+    streak_count: int
+    last_activity_date: Optional[str] = None
+
+
+class TrustProfileResponse(BaseModel):
+    """유저가 실제 대화에서 안전한지 보증하는 신뢰 프로파일."""
+    uid: str
+    is_trusted: bool            # ai_penalty_count < AI_PENALTY_TRUST_THRESHOLD
+    ai_penalty_count: int       # AI 대화 거친 언행 누적 횟수
+    user_penalty_count: int     # 실제 대화 위반 누적 횟수
+    user_warning_given: bool    # 실제 대화 경고 1회 소진 여부
+
+
+class ScoreBarToggleResponse(BaseModel):
+    uid: str
+    score_bar_visible: bool
+
+
+class PenaltyEventResponse(BaseModel):
+    uid: str
+    context: str                # "ai_chat" | "user_chat"
+    action: str                 # "penalized" | "warned"
+    delta: float                # 차감량 (경고 시 0.0)
+    stability_score: float
+    stage: str
+    ai_penalty_count: int
+    user_penalty_count: int
+    message: str
+
+
+# ── Friends ────────────────────────────────────────────────────────────────────
+
+class AnonymousNameResponse(BaseModel):
+    friend_uid: str
+    anonymous_name: str
+
+
+class FriendUnfriendResponse(BaseModel):
+    success: bool
+    message: str
+
+
+# ── Gatherings ────────────────────────────────────────────────────────────────
+
+class GatheringAttendRequest(BaseModel):
+    gathering_id: str
+
+
+# ── Moderation (AI 담당자 연동용) ─────────────────────────────────────────────
+
+class ModerationResult(BaseModel):
+    is_toxic: bool
+    severity: int       # 0=clean, 1=mild(경고), 2=severe(차감)
+    reason: Optional[str] = None

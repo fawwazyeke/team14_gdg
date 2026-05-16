@@ -11,11 +11,16 @@ from app.database import user_doc
 from app.dependencies import get_current_uid
 from app.models import doc_to_user_profile
 from app.schemas import (
+    AI_PENALTY_TRUST_THRESHOLD,
+    ScoreBarToggleResponse,
+    TrustProfileResponse,
+    UNLOCK_THRESHOLD,
     UserProfileCreate,
     UserProfileResponse,
     UserStatusResponse,
     score_to_stage,
 )
+from app.services.stability_service import get_streak, get_trust_profile
 
 router = APIRouter()
 
@@ -31,11 +36,18 @@ def create_profile(body: UserProfileCreate, uid: str = Depends(get_current_uid))
         "nickname": body.nickname,
         "country": body.country,
         "language": body.language,
-        "stability_score": 0,
+        "stability_score": 0.0,
         "stage": "AI_START",
         "interests": body.interests or [],
         "communication_style": body.communication_style,
         "created_at": datetime.utcnow(),
+        # 신규 필드 초기화
+        "streak_count": 0,
+        "last_activity_date": None,
+        "score_bar_visible": False,
+        "ai_penalty_count": 0,
+        "user_penalty_count": 0,
+        "user_warning_given": False,
     }
     ref.set(data)
     return doc_to_user_profile(uid, data)
@@ -67,5 +79,32 @@ def get_my_status(uid: str = Depends(get_current_uid)):
         can_do_missions=score >= 36,
         can_recommend_users=score >= 61,
         can_access_events=score >= 61,
-        can_chat_with_users=score >= 81,
+        can_chat_with_users=score >= UNLOCK_THRESHOLD["user_chat"],       # 60
+        can_access_gatherings=score >= UNLOCK_THRESHOLD["gathering"],     # 100
     )
+
+
+@router.patch("/me/settings/score-bar", response_model=ScoreBarToggleResponse)
+def toggle_score_bar(uid: str = Depends(get_current_uid)):
+    """점수 바 표시 ON/OFF 토글. 기본값 OFF (개인 페이지에서만 노출)."""
+    ref = user_doc(uid)
+    snap = ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    current = snap.to_dict().get("score_bar_visible", False)
+    new_value = not current
+    ref.update({"score_bar_visible": new_value})
+    return ScoreBarToggleResponse(uid=uid, score_bar_visible=new_value)
+
+
+@router.get("/me/streak")
+def get_my_streak(uid: str = Depends(get_current_uid)):
+    """연속 활동(스트릭) 정보 조회."""
+    return get_streak(uid)
+
+
+@router.get("/me/trust", response_model=TrustProfileResponse)
+def get_my_trust(uid: str = Depends(get_current_uid)):
+    """신뢰도 프로파일 — AI 페널티 누적 횟수 기반."""
+    return get_trust_profile(uid)
