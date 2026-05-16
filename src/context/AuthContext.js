@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
       setLoading(true);
 
       try {
-        const remoteProfile = await withTimeout(getUserProfile(nextUser.uid), 3000);
+        const remoteProfile = await withTimeout(getUserProfile(nextUser.uid), 8000);
         const pendingProfile = await getPendingProfile(nextUser.uid);
 
         if (pendingProfile) {
@@ -112,7 +112,7 @@ export function AuthProvider({ children }) {
         AsyncStorage.setItem(userStorageKeys(user.uid).name, profileInput.nickname).catch(() => {});
 
         try {
-          const savedProfile = await withTimeout(saveUserProfile(profileInput), 3000);
+          const savedProfile = await withTimeout(saveUserProfile(profileInput), 8000);
           await clearPendingProfile(user.uid);
           setProfile({ ...profileInput, ...savedProfile });
         } catch {
