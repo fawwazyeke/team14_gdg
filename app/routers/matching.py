@@ -17,7 +17,7 @@ anonymous_id = generate_anonymous_name(my_uid, candidate_uid) 로 생성 (결정
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ai_logic.friend_matching import recommend_friends, calculate_match_score
+from ai_logic.friend_matching import recommend_friends
 from app.database import user_doc, user_profiles_col
 from app.dependencies import get_current_uid
 from app.schemas import UNLOCK_THRESHOLD
@@ -100,35 +100,3 @@ def recommend_matches(
         "recommendations": results,
     }
 
-
-# ── 점수 확인 (디버그) ────────────────────────────────────────────────────────
-
-@router.get("/score/{target_uid}")
-def get_match_score(
-    target_uid: str,
-    uid: str = Depends(get_current_uid),
-):
-    """
-    나와 특정 유저의 매칭 점수만 반환 (디버그·개발 확인용).
-    응답에 target_uid 는 포함되지 않음 — anonymous_name 만 반환.
-    """
-    my_snap = user_doc(uid).get()
-    target_snap = user_doc(target_uid).get()
-
-    if not my_snap.exists:
-        raise HTTPException(status_code=404, detail="내 프로필을 찾을 수 없습니다.")
-    if not target_snap.exists:
-        raise HTTPException(status_code=404, detail="대상 유저 프로필을 찾을 수 없습니다.")
-
-    my_profile = _to_matching_profile(my_snap.to_dict() or {})
-    target_profile = _to_matching_profile(target_snap.to_dict() or {})
-
-    score = calculate_match_score(my_profile, target_profile)
-    anon_name = generate_anonymous_name(uid, target_uid)
-
-    return {
-        "anonymous_name": anon_name,
-        "match_score": score,
-        "my_interests": my_profile["interests"],
-        "target_interests": target_profile["interests"],
-    }
