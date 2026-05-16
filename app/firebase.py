@@ -27,6 +27,7 @@ def _get_app() -> firebase_admin.App:
     service_account_file = (
         os.getenv("FIREBASE_SERVICE_ACCOUNT_FILE")
         or os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+        or os.getenv("FIREBASE_CREDENTIALS_PATH")
         or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         or ("serviceAccountKey.json" if os.path.exists("serviceAccountKey.json") else None)
     )
@@ -43,12 +44,14 @@ def _get_app() -> firebase_admin.App:
 
 
 def get_firestore() -> firestore.client:
-    """Firestore 클라이언트 반환 (싱글톤)."""
     _get_app()
     return firestore.client()
 
 
 def verify_token(id_token: str) -> dict:
-    """Firebase Auth ID 토큰 검증 후 decoded token 반환."""
     _get_app()
     return auth.verify_id_token(id_token)
+
+
+# Module-level db alias for compatibility with Han's services
+db = get_firestore()

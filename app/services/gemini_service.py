@@ -1,8 +1,3 @@
-"""
-Thin wrapper around the Gemini API.
-Han 브랜치와 함수명 통일: generate_json()
-"""
-
 import json
 import os
 from typing import Optional
@@ -20,12 +15,12 @@ if GEMINI_API_KEY:
 
 
 def generate_json(prompt: str, system_instruction: Optional[str] = None) -> dict:
-    """Gemini 호출 → JSON dict 반환. Han 브랜치와 동일한 인터페이스."""
     if not GEMINI_API_KEY:
         print("Gemini API error: GEMINI_API_KEY is missing")
         return {}
 
     try:
+        print(f"Using Gemini model: {GEMINI_MODEL}")
         model = genai.GenerativeModel(
             model_name=GEMINI_MODEL,
             system_instruction=system_instruction,

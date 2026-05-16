@@ -38,13 +38,13 @@ yarn-error.*
 serviceAccountKey.json
 firebase-service-account*.json
 service-account*.json
+secrets/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.pyo
 venv/
 .venv/
 *.egg-info/
