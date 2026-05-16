@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import auth, users, survey, missions, chat, matching, events, settings
-from app.routers import stability, friends
+from app.routers import stability, friends, ai
 
 app = FastAPI(
     title="Social Companion API",
@@ -30,6 +30,7 @@ app.include_router(events.router,   prefix="/events",   tags=["Events"])
 app.include_router(settings.router,  prefix="/settings",  tags=["Settings"])
 app.include_router(stability.router, prefix="/stability", tags=["Stability"])
 app.include_router(friends.router,   prefix="/friends",   tags=["Friends"])
+app.include_router(ai.router,        prefix="/ai",        tags=["AI"])
 
 
 @app.get("/")

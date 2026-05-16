@@ -8,10 +8,12 @@ user_profiles/{uid}/mission_records ← 완료 + 인증 기록
   AI 미션  (is_ai_generated=True):  verification_type = None, 인증 불필요
 """
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
+from ai_logic.task_logic import recommend_tasks
 from app.database import mission_records_col, missions_col, stability_logs_col, user_doc
 from app.dependencies import get_current_uid
 from app.models import doc_to_mission, doc_to_record
@@ -26,8 +28,13 @@ from app.schemas import (
     VALID_VERIFICATION_TYPES,
     score_to_stage,
 )
+from app.services.ai_service import get_ai_user_profile
 
 router = APIRouter()
+
+
+class AIMissionRecommendRequest(BaseModel):
+    current_mood: Optional[str] = None  # "tired" | "sad" | "lonely" | "happy" 등
 
 
 def _require_mission_unlocked(uid: str):
@@ -194,6 +201,76 @@ def complete_mission(
         total_delta=delta,
         verified=verified,
     )
+
+
+# ── AI 미션 추천 ───────────────────────────────────────────────────────────────
+
+@router.post("/ai-recommend", response_model=List[MissionResponse], status_code=201)
+def ai_recommend_missions(
+    body: AIMissionRecommendRequest = AIMissionRecommendRequest(),
+    uid: str = Depends(get_current_uid),
+):
+    """
+    유저 프로필 기반 AI 미션 3개 자동 생성 + Firestore 저장.
+
+    흐름:
+      1. Firestore에서 유저 프로필(관심사, 성향) 읽기
+      2. 완료된 AI 미션의 source_task_id 수집 → 중복 추천 방지
+      3. task_logic.recommend_tasks() 로 3개 추천 (순수 Python, Gemini 불필요)
+      4. is_ai_generated=True 로 Firestore에 저장
+      5. 저장된 미션 목록 반환
+
+    이후 유저가 미션 선택 → 기존 POST /missions/{id}/complete 로 완료 처리.
+    current_mood: AI 채팅에서 감지된 감정을 프론트에서 넘겨줄 수 있음.
+    """
+    _require_mission_unlocked(uid)
+
+    user_profile = get_ai_user_profile(uid)
+
+    # 완료된 AI 미션의 source_task_id 수집 (중복 추천 방지)
+    completed_task_ids: list[str] = []
+    existing_docs = missions_col(uid).where("is_ai_generated", "==", True).stream()
+    for doc in existing_docs:
+        data = doc.to_dict() or {}
+        task_id = data.get("source_task_id")
+        if task_id and data.get("status") == "completed":
+            completed_task_ids.append(task_id)
+
+    # task_logic으로 추천
+    result = recommend_tasks(
+        user_profile=user_profile,
+        completed_task_ids=completed_task_ids,
+        current_mood=body.current_mood,
+        count=3,
+    )
+
+    # Firestore에 저장
+    now = datetime.utcnow()
+    saved_missions: list[dict] = []
+
+    difficulty_map = {"easy": "easy", "medium": "normal", "hard": "hard"}
+
+    for item in result["tasks"]:
+        task = item["task"]
+        diff = difficulty_map.get(task.get("difficulty", "easy"), "easy")
+        data = {
+            "title":            task.get("title", ""),
+            "description":      task.get("description", ""),
+            "difficulty":       diff,
+            "verification_type": None,         # AI 미션 — 인증 불필요
+            "is_ai_generated":  True,
+            "source_task_id":   task.get("id"),  # 중복 방지용
+            "ai_reason":        item.get("reason", ""),
+            "status":           "pending",
+            "stability_delta":  2,              # ai_mission_complete 기준
+            "created_at":       now,
+            "completed_at":     None,
+        }
+        ref = missions_col(uid).add(data)
+        doc_id = ref[1].id
+        saved_missions.append(doc_to_mission(doc_id, uid, data))
+
+    return saved_missions
 
 
 # ── Records ────────────────────────────────────────────────────────────────────
