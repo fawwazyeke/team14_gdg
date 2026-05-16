@@ -38,6 +38,7 @@ export default function DoLoginScreen({ initialMode = 'login' }) {
     try {
       await signInWithGoogle();
     } catch (e) {
+      console.error('Google sign-in failed:', e?.code || e?.message || e);
       setError(friendlyError(e));
     } finally {
       setLoading(false);
@@ -219,7 +220,8 @@ function friendlyError(e) {
   if (code.includes('auth/weak-password')) return 'Use at least 6 characters for your password.';
   if (code.includes('auth/network-request-failed')) return 'Network error. Check your connection.';
   if (code.includes('auth/too-many-requests')) return 'Too many attempts. Please wait a moment.';
-  return 'Something went wrong. Please try again.';
+  if (code.includes('auth/argument-error')) return 'Google sign-in needs the latest web auth build. Redeploy Vercel and try again.';
+  return code ? `Something went wrong: ${code}` : 'Something went wrong. Please try again.';
 }
 
 const styles = StyleSheet.create({
