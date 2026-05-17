@@ -88,32 +88,17 @@ export default function DoProfileScreen() {
 
   const [score, setScore] = useState(null);
 
-<<<<<<< HEAD
-  React.useEffect(() => {
-    if (!user || !name) return;
-    let mounted = true;
-    ensureBackendProfile({ nickname: name, interests, age: profile?.age })
-      .then(() => apiFetch('/users/me'))
-      .then(data => { if (mounted) setScore(data.stability_score ?? 0); })
-      .catch(() => { if (mounted) setScore(0); });
-    return () => { mounted = false; };
-  }, [interests, name, profile?.age, user]);
-=======
   useFocusEffect(
     useCallback(() => {
-      if (!user) return;
+      if (!user || !name) return;
       let mounted = true;
-      apiFetch('/users/me')
-        .then(data => {
-          if (mounted) setScore(data.stability_score ?? 0);
-        })
-        .catch(() => {
-          if (mounted) setScore(0);
-        });
+      ensureBackendProfile({ nickname: name, interests, age: profile?.age })
+        .then(() => apiFetch('/users/me'))
+        .then(data => { if (mounted) setScore(data.stability_score ?? 0); })
+        .catch(() => { if (mounted) setScore(0); });
       return () => { mounted = false; };
-    }, [user])
+    }, [user, name, interests, profile?.age])
   );
->>>>>>> fe8e749 (all)
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
