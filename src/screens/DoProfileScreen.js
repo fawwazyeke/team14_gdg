@@ -1,10 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { useDoTheme } from '../context/DoThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { MOODS } from '../theme/doTheme';
@@ -88,7 +87,6 @@ export default function DoProfileScreen() {
 
   const [score, setScore] = useState(null);
 
-<<<<<<< HEAD
   React.useEffect(() => {
     if (!user || !name) return;
     let mounted = true;
@@ -98,22 +96,6 @@ export default function DoProfileScreen() {
       .catch(() => { if (mounted) setScore(0); });
     return () => { mounted = false; };
   }, [interests, name, profile?.age, user]);
-=======
-  useFocusEffect(
-    useCallback(() => {
-      if (!user) return;
-      let mounted = true;
-      apiFetch('/users/me')
-        .then(data => {
-          if (mounted) setScore(data.stability_score ?? 0);
-        })
-        .catch(() => {
-          if (mounted) setScore(0);
-        });
-      return () => { mounted = false; };
-    }, [user])
-  );
->>>>>>> fe8e749 (all)
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
