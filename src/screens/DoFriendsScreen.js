@@ -9,10 +9,14 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useDoTheme } from '../context/DoThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Card, RelateAvatar } from '../components/DoAtoms';
+import { apiFetch } from '../services/backendClient';
 import {
   getFriends, getPendingRequests,
   acceptFriendRequest, rejectFriendRequest,
+  getSuggestedFriends, sendFriendRequest,
 } from '../services/friendsService';
+
+const RELATE_THRESHOLD = 60;
 
 const ALIAS_COLOR_MAP = {
   Red:     '#EF4444',
@@ -45,6 +49,46 @@ function tintFor(item) {
 
 function AnonymousGlyph({ item, P, size = 44, kind = 'notes' }) {
   return <RelateAvatar size={size} P={P} kind={kind} tint={tintFor(item)} />;
+}
+
+function LockedScreen({ score, P, insets }) {
+  const needed = RELATE_THRESHOLD - Math.floor(score ?? 0);
+  return (
+    <View style={[styles.root, { backgroundColor: P.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: insets.top }]}>
+      <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
+      <Text style={[styles.title, { color: P.ink, textAlign: 'center', marginBottom: 8 }]}>Not yet</Text>
+      <Text style={[styles.empty, { color: P.inkSoft, textAlign: 'center', lineHeight: 22 }]}>
+        Relate unlocks at {RELATE_THRESHOLD} points.{'\n'}
+        You need {needed} more point{needed !== 1 ? 's' : ''}.{'\n\n'}
+        Keep chatting with Do and completing missions.
+      </Text>
+    </View>
+  );
+}
+
+function SuggestedCard({ item, P, onConnect, busy, sent }) {
+  return (
+    <View style={[styles.pendingRow, { borderBottomColor: P.line }]}>
+      <AnonymousGlyph item={item} P={P} size={44} kind="notes" />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.pendingAlias, { color: P.ink }]}>{item.alias}</Text>
+        <Text style={[styles.pendingMeta, { color: P.inkSoft }]}>
+          {sent ? 'Request sent' : item.shared_interests > 0 ? `${item.shared_interests} shared interest${item.shared_interests > 1 ? 's' : ''}` : 'On a similar journey'}
+        </Text>
+      </View>
+      {sent ? (
+        <View style={[styles.rejectBtn, { borderColor: P.line }]}>
+          <Text style={[styles.rejectText, { color: P.inkMuted }]}>Pending</Text>
+        </View>
+      ) : (
+        <TouchableOpacity onPress={onConnect} disabled={busy} activeOpacity={0.85}>
+          <LinearGradient colors={[P.grad[0], P.grad[1]]} style={styles.acceptBtn}>
+            <Text style={styles.acceptText}>{busy ? '…' : 'Connect'}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 }
 
 function PendingCard({ item, P, onAccept, onReject, busy }) {
@@ -99,21 +143,28 @@ export default function DoFriendsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
+  const [canAccess, setCanAccess] = useState(null);
+  const [userScore, setUserScore] = useState(0);
+
   const [friends, setFriends] = useState([]);
   const [pending, setPending] = useState([]);
+  const [suggested, setSuggested] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState({});
+  const [sentRequests, setSentRequests] = useState({});
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const [f, p] = await Promise.all([
+      const [f, p, s] = await Promise.all([
         getFriends(),
         getPendingRequests(),
+        getSuggestedFriends(),
       ]);
       setFriends(Array.isArray(f) ? f : []);
       setPending(Array.isArray(p) ? p : []);
+      setSuggested(Array.isArray(s) ? s : []);
     } catch (e) {
       console.warn('Friends load error:', e.message);
     } finally {
@@ -122,7 +173,15 @@ export default function DoFriendsScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    apiFetch('/users/me/status')
+      .then(data => {
+        setCanAccess(data.can_recommend_users);
+        setUserScore(data.stability_score ?? 0);
+        if (data.can_recommend_users) load();
+      })
+      .catch(() => { setCanAccess(false); setLoading(false); });
+  }, [load]));
 
   const handleAccept = async (fromUid, pairKey) => {
     setBusy(b => ({ ...b, [pairKey]: true }));
@@ -144,7 +203,23 @@ export default function DoFriendsScreen() {
     }
   };
 
+  const handleConnect = async (targetUid) => {
+    setBusy(b => ({ ...b, [targetUid]: true }));
+    try {
+      await sendFriendRequest(targetUid);
+      setSentRequests(s => ({ ...s, [targetUid]: true }));
+    } catch (e) {
+      console.warn('Connect error:', e.message);
+    } finally {
+      setBusy(b => ({ ...b, [targetUid]: false }));
+    }
+  };
+
   const isUnderage = profile?.age !== undefined && profile.age < 18;
+
+  if (canAccess === false) {
+    return <LockedScreen score={userScore} P={P} insets={insets} />;
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: P.bg }]}>
@@ -181,6 +256,25 @@ export default function DoFriendsScreen() {
                     busy={!!busy[item.pair_key]}
                     onAccept={() => handleAccept(item.from_uid, item.pair_key)}
                     onReject={() => handleReject(item.from_uid, item.pair_key)}
+                  />
+                ))}
+              </Card>
+            </View>
+          )}
+
+          {/* Suggested */}
+          {suggested.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: P.ink }]}>Suggested for you</Text>
+              <Card P={P} style={{ overflow: 'hidden' }}>
+                {suggested.map(item => (
+                  <SuggestedCard
+                    key={item.uid}
+                    item={item}
+                    P={P}
+                    busy={!!busy[item.uid]}
+                    sent={!!sentRequests[item.uid]}
+                    onConnect={() => handleConnect(item.uid)}
                   />
                 ))}
               </Card>

@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:docs.expo.dev)"
+      "WebFetch(domain:docs.expo.dev)",
+      "PowerShell(gcloud --version 2>&1)",
+      "PowerShell(docker --version 2>&1)",
+      "Bash(Get-ChildItem -Path . -Recurse -Directory -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -First 30)"
     ]
   }
 }
