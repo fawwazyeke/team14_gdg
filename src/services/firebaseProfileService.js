@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 import { firebaseDb } from '../config/firebase';
 
@@ -8,6 +8,9 @@ export const userStorageKeys = (uid) => ({
   name: `user_name:${uid}`,
   interests: `user_interests:${uid}`,
   pendingProfile: `do_pending_profile:${uid}`,
+  language: `do_language`,        // global key — one device, one language preference
+  mood: `do_mood:${uid}`,
+  mode: `do_mode:${uid}`,
 });
 
 export async function getUserProfile(uid) {
@@ -33,6 +36,15 @@ export async function saveUserProfile(input) {
 
   await setDoc(ref, data, { merge: true });
   return data;
+}
+
+/**
+ * Merge-only update for non-critical user preferences (language, mood, mode).
+ * Won't wipe other profile fields.
+ */
+export async function saveUserPreferences(uid, prefs = {}) {
+  const ref = doc(firebaseDb, 'users', uid);
+  await setDoc(ref, { ...prefs, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 export async function savePendingProfile(input) {

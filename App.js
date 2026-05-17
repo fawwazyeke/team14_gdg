@@ -6,13 +6,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DoThemeProvider } from './src/context/DoThemeContext';
+import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import DoLandingScreen from './src/screens/DoLandingScreen';
 import DoLoginScreen from './src/screens/DoLoginScreen';
 import DoOnboardingScreen from './src/screens/DoOnboardingScreen';
 import { userStorageKeys } from './src/services/firebaseProfileService';
 import {
-  DEFAULT_SURVEY_ANSWERS,
   ensureBackendProfile,
   submitOnboardingSurvey,
 } from './src/services/onboardingSurveyService';
@@ -33,8 +33,16 @@ function FirebaseErrorBanner() {
 
 function AppGate() {
   const { user, profile, loading, needsProfile, completeProfile } = useAuth();
+  const { setLanguage } = useLanguage();
   const [hasOnboarded, setHasOnboarded] = useState(null);
   const backendSyncedRef = useRef(false);
+
+  // Sync language from Firestore profile when it loads
+  useEffect(() => {
+    if (profile?.language) {
+      setLanguage(profile.language);
+    }
+  }, [profile?.language]);
 
   // Landing / login routing for unauthenticated users
   // null = still checking storage, 'landing' = show landing, 'login' | 'signup' = show login
@@ -65,14 +73,33 @@ function AppGate() {
   };
 
   useEffect(() => {
-    if (!user || needsProfile) {
+    if (!user) {
       setHasOnboarded(null);
       backendSyncedRef.current = false;
       return;
     }
 
-    AsyncStorage.getItem(userStorageKeys(user.uid).onboarded).then((val) => {
+    // New users (needsProfile) haven't onboarded yet — send them to DoOnboardingScreen.
+    if (needsProfile) {
+      setHasOnboarded(false);
+      return;
+    }
+
+    AsyncStorage.getItem(userStorageKeys(user.uid).onboarded).then(async (val) => {
       if (val === 'true') {
+        // Extra check: if the backend profile has no survey score yet, the user
+        // skipped the questionnaire (old account or stale flag). Send them back.
+        try {
+          const backendProfile = await ensureBackendProfile({
+            nickname: profile?.nickname || '',
+            interests: profile?.interests || [],
+          });
+          if ((backendProfile?.stability_score ?? 0) === 0) {
+            await AsyncStorage.removeItem(userStorageKeys(user.uid).onboarded);
+            setHasOnboarded(false);
+            return;
+          }
+        } catch { /* network failure — trust local flag */ }
         setHasOnboarded(true);
       } else if (profile?.interests?.length > 0) {
         AsyncStorage.setItem(userStorageKeys(user.uid).onboarded, 'true');
@@ -97,15 +124,8 @@ function AppGate() {
     await completeProfile(name, { interests, age });
 
     try {
-      const backendProfile = await ensureBackendProfile({ nickname: name, interests, age });
-      const answers = Object.keys(surveyAnswers || {}).length > 0
-        ? surveyAnswers
-        : backendProfile?.stability_score >= 36
-          ? null
-          : DEFAULT_SURVEY_ANSWERS;
-      if (answers) {
-        await submitOnboardingSurvey(answers);
-      }
+      await ensureBackendProfile({ nickname: name, interests, age });
+      await submitOnboardingSurvey(surveyAnswers);
     } catch (e) {
       console.warn('Backend onboarding call failed, will retry later:', e.message);
     }
@@ -121,7 +141,7 @@ function AppGate() {
   };
 
   // ── Loading spinner ──
-  if (loading || (user && !needsProfile && hasOnboarded === null)) {
+  if (loading || (user && hasOnboarded === null)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1c1815' }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -130,15 +150,6 @@ function AppGate() {
   }
 
   // ── Unauthenticated ──
-  if (user && needsProfile) {
-    return (
-      <SafeAreaProvider>
-        <FirebaseErrorBanner />
-        <DoLoginScreen initialMode="signup" />
-      </SafeAreaProvider>
-    );
-  }
-
   if (!user) {
     // Still checking AsyncStorage
     if (authView === null) {
@@ -196,9 +207,11 @@ const styles = StyleSheet.create({
 export default function App() {
   return (
     <AuthProvider>
-      <DoThemeProvider>
-        <AppGate />
-      </DoThemeProvider>
+      <LanguageProvider>
+        <DoThemeProvider>
+          <AppGate />
+        </DoThemeProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

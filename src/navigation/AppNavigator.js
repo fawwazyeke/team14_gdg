@@ -15,6 +15,7 @@ import DoFriendChatScreen from '../screens/DoFriendChatScreen';
 import DoProfileScreen from '../screens/DoProfileScreen';
 import DoEventFeedbackScreen from '../screens/DoEventFeedbackScreen';
 import { useDoTheme } from '../context/DoThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -67,15 +68,14 @@ function YouStack() {
   );
 }
 
-const BOTTOM_TABS = [
-  { name: 'Do',      label: 'Do',      icon: ChatIcon,   Screen: TalkStack },
-  { name: 'Relate',  label: 'Relate',  icon: PeopleIcon, Screen: PeopleStack },
-  { name: 'Mission', label: 'Mission', icon: TargetIcon, Screen: BridgesStack },
-  { name: 'Find',    label: 'Find',    icon: GatherIcon, Screen: GatherStack },
+const BOTTOM_TAB_DEFS = [
+  { name: 'Do',      labelKey: 'nav_do',      icon: ChatIcon,   Screen: TalkStack },
+  { name: 'Relate',  labelKey: 'nav_relate',  icon: PeopleIcon, Screen: PeopleStack },
+  { name: 'Mission', labelKey: 'nav_mission', icon: TargetIcon, Screen: BridgesStack },
+  { name: 'Find',    labelKey: 'nav_find',    icon: GatherIcon, Screen: GatherStack },
 ];
 
-const PROFILE_TAB = { name: 'Soul', label: 'Soul', icon: PersonIcon, Screen: YouStack };
-const TABS = [...BOTTOM_TABS, PROFILE_TAB];
+const PROFILE_TAB_DEF = { name: 'Soul', labelKey: 'nav_soul', icon: PersonIcon, Screen: YouStack };
 
 const linking = {
   config: {
@@ -117,8 +117,11 @@ const linking = {
 
 function DoTabBar({ state, navigation }) {
   const { P } = useDoTheme();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const activeRoute = state.routes[state.index];
+  const PROFILE_TAB = { ...PROFILE_TAB_DEF, label: t(PROFILE_TAB_DEF.labelKey) };
+  const BOTTOM_TABS = BOTTOM_TAB_DEFS.map(d => ({ ...d, label: t(d.labelKey) }));
   const profileFocused = activeRoute?.name === PROFILE_TAB.name;
 
   return (
@@ -186,6 +189,8 @@ function DoTabBar({ state, navigation }) {
   );
 }
 
+const ALL_TAB_DEFS = [...BOTTOM_TAB_DEFS, PROFILE_TAB_DEF];
+
 export default function AppNavigator() {
   return (
     <NavigationContainer linking={linking}>
@@ -194,7 +199,7 @@ export default function AppNavigator() {
         tabBar={props => <DoTabBar {...props} />}
         screenOptions={{ headerShown: false }}
       >
-        {TABS.map(tab => (
+        {ALL_TAB_DEFS.map(tab => (
           <Tab.Screen key={tab.name} name={tab.name} component={tab.Screen} />
         ))}
       </Tab.Navigator>

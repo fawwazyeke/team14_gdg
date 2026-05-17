@@ -5,12 +5,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDoTheme } from '../context/DoThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { MOODS } from '../theme/doTheme';
 import { Card, Chip } from '../components/DoAtoms';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/backendClient';
 import { ensureBackendProfile } from '../services/onboardingSurveyService';
-import { saveUserProfile } from '../services/firebaseProfileService';
+import { saveUserProfile, saveUserPreferences } from '../services/firebaseProfileService';
 
 const INTERESTS = [
   { id: 'sports',  label: 'Sports',  emoji: '⚽' },
@@ -23,6 +24,12 @@ const INTERESTS = [
   { id: 'tech',    label: 'Tech',    emoji: '💡' },
   { id: 'film',    label: 'Film',    emoji: '🎬' },
   { id: 'fitness', label: 'Fitness', emoji: '🏃' },
+];
+
+const LANGUAGES = [
+  { code: 'en', flag: '🇺🇸' },
+  { code: 'ko', flag: '🇰🇷' },
+  { code: 'ja', flag: '🇯🇵' },
 ];
 
 function MoodSwatch({ id, m, active, onPress, P }) {
@@ -46,13 +53,13 @@ function MoodSwatch({ id, m, active, onPress, P }) {
 
 export default function DoProfileScreen() {
   const { P, mood, setMood, mode, setMode } = useDoTheme();
+  const { language, setLanguage, t } = useLanguage();
   const { user, profile, signOut } = useAuth();
   const insets = useSafeAreaInsets();
 
   const name = profile?.nickname || user?.displayName || 'You';
   const initial = name.charAt(0).toUpperCase();
 
-  // Local interests state so toggling is instant
   const [interests, setInterests] = useState(profile?.interests || []);
   const [interestSaving, setInterestSaving] = useState(false);
 
@@ -70,7 +77,7 @@ export default function DoProfileScreen() {
         photoURL: user?.photoURL ?? null,
         interests: updated,
       });
-      showToast('Saved');
+      showToast(t('save') + ' ✓');
     } catch {
       showToast('Could not save');
     } finally {
@@ -82,20 +89,12 @@ export default function DoProfileScreen() {
 
   React.useEffect(() => {
     if (!user || !name) return;
-
     let mounted = true;
     ensureBackendProfile({ nickname: name, interests, age: profile?.age })
       .then(() => apiFetch('/users/me'))
-      .then(data => {
-        if (mounted) setScore(data.stability_score ?? 0);
-      })
-      .catch(() => {
-        if (mounted) setScore(0);
-      });
-
-    return () => {
-      mounted = false;
-    };
+      .then(data => { if (mounted) setScore(data.stability_score ?? 0); })
+      .catch(() => { if (mounted) setScore(0); });
+    return () => { mounted = false; };
   }, [interests, name, profile?.age, user]);
 
   const [editing, setEditing] = useState(false);
@@ -107,9 +106,14 @@ export default function DoProfileScreen() {
     setTimeout(() => setToastMsg(null), 1800);
   };
 
-  const save = () => {
-    setEditing(false);
-    showToast('✓ Saved');
+  const save = () => { setEditing(false); showToast('✓ ' + t('save')); };
+
+  const handleSetLanguage = async (code) => {
+    await setLanguage(code);
+    if (user) {
+      saveUserPreferences(user.uid, { language: code }).catch(() => {});
+    }
+    showToast('✓');
   };
 
   return (
@@ -119,10 +123,7 @@ export default function DoProfileScreen() {
 
         {/* Avatar + name */}
         <View style={styles.avatarSection}>
-          <LinearGradient
-            colors={[P.grad[0], P.grad[1], P.grad[2]]}
-            style={styles.avatar}
-          >
+          <LinearGradient colors={[P.grad[0], P.grad[1], P.grad[2]]} style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
           </LinearGradient>
 
@@ -136,11 +137,11 @@ export default function DoProfileScreen() {
               />
               <View style={styles.editBtns}>
                 <TouchableOpacity onPress={() => setEditing(false)} style={[styles.editCancel, { borderColor: P.line }]}>
-                  <Text style={{ color: P.inkSoft, fontSize: 13 }}>Cancel</Text>
+                  <Text style={{ color: P.inkSoft, fontSize: 13 }}>{t('cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={save} activeOpacity={0.85}>
                   <LinearGradient colors={[P.grad[0], P.grad[1]]} style={styles.editSave}>
-                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Save</Text>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t('save')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -151,31 +152,29 @@ export default function DoProfileScreen() {
               <Text style={[styles.editIcon, { color: P.inkMuted }]}> ✎</Text>
             </TouchableOpacity>
           )}
-          <Text style={[styles.daysIn, { color: P.inkMuted }]}>Stability score: {score ?? '…'}</Text>
+          <Text style={[styles.daysIn, { color: P.inkMuted }]}>{t('profile_stability_score')}: {score ?? '…'}</Text>
         </View>
 
         {/* Journey card */}
         <View style={styles.section}>
           <Card P={P} style={{ padding: 18 }}>
-            <Text style={[styles.sectionMicro, { color: P.inkMuted }]}>YOUR JOURNEY</Text>
+            <Text style={[styles.sectionMicro, { color: P.inkMuted }]}>{t('profile_journey')}</Text>
             <View style={{ flexDirection: 'row', gap: 18, marginTop: 10 }}>
-              {[['Score', score ?? '…'], ['Days', '–'], ['Chats', '–']].map(([label, val]) => (
+              {[[t('profile_score'), score ?? '…'], [t('profile_days'), '–'], [t('profile_chats'), '–']].map(([label, val]) => (
                 <View key={label} style={{ flex: 1 }}>
                   <Text style={[styles.statVal, { color: P.ink }]}>{val}</Text>
                   <Text style={[styles.statLabel, { color: P.inkSoft }]}>{label}</Text>
                 </View>
               ))}
             </View>
-            <Text style={[styles.journeyNote, { color: P.inkSoft }]}>
-              We don't show streaks or badges. This is just for you.
-            </Text>
+            <Text style={[styles.journeyNote, { color: P.inkSoft }]}>{t('profile_journey_note')}</Text>
           </Card>
         </View>
 
-        {/* Mood */}
+        {/* Mood (accent colour) */}
         <View style={[styles.section, { paddingHorizontal: 24 }]}>
-          <Text style={[styles.sectionTitle, { color: P.ink }]}>Mood</Text>
-          <Text style={[styles.sectionSub, { color: P.inkSoft }]}>Shift the light. Pick one that suits today.</Text>
+          <Text style={[styles.sectionTitle, { color: P.ink }]}>{t('profile_mood')}</Text>
+          <Text style={[styles.sectionSub, { color: P.inkSoft }]}>{t('profile_mood_sub')}</Text>
           <View style={styles.swatchGrid}>
             {Object.entries(MOODS).map(([id, m]) => (
               <MoodSwatch key={id} id={id} m={m} active={mood === id} onPress={() => setMood(id)} P={P} />
@@ -183,12 +182,15 @@ export default function DoProfileScreen() {
           </View>
         </View>
 
-        {/* Theme */}
+        {/* Theme (light / dark) */}
         <View style={[styles.section, { paddingHorizontal: 24 }]}>
-          <Text style={[styles.sectionTitle, { color: P.ink }]}>Theme</Text>
-          <Text style={[styles.sectionSub, { color: P.inkSoft }]}>Light feels like morning. Dark feels like late evening.</Text>
+          <Text style={[styles.sectionTitle, { color: P.ink }]}>{t('profile_theme')}</Text>
+          <Text style={[styles.sectionSub, { color: P.inkSoft }]}>{t('profile_theme_sub')}</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            {[['light', 'Light', '☀️'], ['dark', 'Dark', '🌙']].map(([m, label, illo]) => (
+            {[
+              ['light', t('profile_theme_light'), '☀️', t('profile_theme_morning')],
+              ['dark',  t('profile_theme_dark'),  '🌙', t('profile_theme_evening')],
+            ].map(([m, label, illo, sub]) => (
               <TouchableOpacity
                 key={m}
                 onPress={() => setMode(m)}
@@ -199,16 +201,45 @@ export default function DoProfileScreen() {
               >
                 <Text style={{ fontSize: 28 }}>{illo}</Text>
                 <Text style={[styles.themeLabel, { color: P.ink }]}>{label}</Text>
-                <Text style={[styles.themeSub, { color: P.inkSoft }]}>{m === 'light' ? 'Morning' : 'Evening'}</Text>
+                <Text style={[styles.themeSub, { color: P.inkSoft }]}>{sub}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
+        {/* Language */}
+        <View style={[styles.section, { paddingHorizontal: 24 }]}>
+          <Text style={[styles.sectionTitle, { color: P.ink }]}>{t('profile_language')}</Text>
+          <Text style={[styles.sectionSub, { color: P.inkSoft }]}>{t('profile_language_sub')}</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {LANGUAGES.map(({ code, flag }) => {
+              const active = language === code;
+              return (
+                <TouchableOpacity
+                  key={code}
+                  onPress={() => handleSetLanguage(code)}
+                  style={[styles.langTile, {
+                    backgroundColor: active ? P.surface : 'transparent',
+                    borderColor: active ? P.primary : P.line,
+                  }]}
+                >
+                  <Text style={{ fontSize: 26 }}>{flag}</Text>
+                  <Text style={[styles.langCode, { color: active ? P.ink : P.inkSoft }]}>
+                    {t(`lang_${code}`)}
+                  </Text>
+                  {active && (
+                    <View style={[styles.langDot, { backgroundColor: P.primary }]} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Interests */}
         <View style={[styles.section, { paddingHorizontal: 24 }]}>
-          <Text style={[styles.sectionTitle, { color: P.ink }]}>What lights you up</Text>
-          <Text style={[styles.sectionSub, { color: P.inkSoft }]}>Tap to change anytime.</Text>
+          <Text style={[styles.sectionTitle, { color: P.ink }]}>{t('profile_interests')}</Text>
+          <Text style={[styles.sectionSub, { color: P.inkSoft }]}>{t('profile_interests_sub')}</Text>
           <View style={styles.chipsWrap}>
             {INTERESTS.map(it => (
               <Chip
@@ -229,9 +260,9 @@ export default function DoProfileScreen() {
         <View style={styles.section}>
           <Card P={P} style={{ overflow: 'hidden' }}>
             {[
-              ['Notifications', 'A gentle morning nudge'],
-              ['How Do works', 'The thinking behind the app'],
-              ['Privacy', 'Your chats stay on this device'],
+              [t('profile_notifications'),  t('profile_notifications_sub')],
+              [t('profile_how_do_works'),   t('profile_how_do_works_sub')],
+              [t('profile_privacy'),        t('profile_privacy_sub')],
             ].map((row, i, arr) => (
               <View key={row[0]} style={[styles.settingsRow, {
                 borderBottomWidth: i < arr.length - 1 ? 0.5 : 0,
@@ -245,7 +276,7 @@ export default function DoProfileScreen() {
               </View>
             ))}
             <TouchableOpacity onPress={signOut} style={[styles.settingsRow, { borderTopWidth: 0.5, borderTopColor: P.line }]}>
-              <Text style={{ color: '#b3261e', fontSize: 15, fontWeight: '500' }}>Sign out</Text>
+              <Text style={{ color: '#b3261e', fontSize: 15, fontWeight: '500' }}>{t('profile_sign_out')}</Text>
             </TouchableOpacity>
           </Card>
         </View>
@@ -307,6 +338,18 @@ const styles = StyleSheet.create({
   },
   themeLabel: { fontSize: 15, fontWeight: '600' },
   themeSub: { fontSize: 12 },
+
+  langTile: {
+    flex: 1, paddingVertical: 14, paddingHorizontal: 8,
+    borderRadius: 16, borderWidth: 1.5,
+    alignItems: 'center', gap: 6,
+    position: 'relative',
+  },
+  langCode: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  langDot: {
+    position: 'absolute', top: 8, right: 8,
+    width: 8, height: 8, borderRadius: 4,
+  },
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 

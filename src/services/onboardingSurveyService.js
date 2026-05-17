@@ -50,14 +50,6 @@ export const DEFAULT_SURVEY_ANSWERS = {
 export async function ensureBackendProfile({ nickname, interests, age }) {
   try {
     const existing = await apiFetch('/users/me');
-    if ((existing?.stability_score ?? 0) <= 0) {
-      try {
-        await submitOnboardingSurvey(DEFAULT_SURVEY_ANSWERS);
-        return await apiFetch('/users/me');
-      } catch (e) {
-        console.warn('Default survey repair failed:', e.message);
-      }
-    }
     return existing;
   } catch (error) {
     if (!String(error.message || '').includes('Profile not found')) {
@@ -82,13 +74,6 @@ export async function ensureBackendProfile({ nickname, interests, age }) {
       throw error;
     }
     return apiFetch('/users/me');
-  }
-
-  // Submit default survey so new users start with a usable stability score.
-  try {
-    await submitOnboardingSurvey(DEFAULT_SURVEY_ANSWERS);
-  } catch (e) {
-    console.warn('Default survey submission failed:', e.message);
   }
 
   return apiFetch('/users/me').catch(() => created);

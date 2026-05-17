@@ -9,6 +9,7 @@ import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-san
 import { Fraunces_400Regular } from '@expo-google-fonts/fraunces';
 import { buildPalette } from '../theme/doTheme';
 import { CompanionSketch, PrimaryButton, Chip, ProgressDots } from '../components/DoAtoms';
+import { SURVEY_QUESTIONS } from '../services/onboardingSurveyService';
 
 const P = buildPalette('dawn', 'dark');
 
@@ -44,7 +45,7 @@ function StepWelcome({ onNext }) {
       <View style={styles.stepFooter}>
         <PrimaryButton P={P} onPress={onNext}>Begin</PrimaryButton>
         <Text style={styles.disclaimer}>Takes about a minute. You can change anything later.</Text>
-        <ProgressDots count={4} active={0} P={P} />
+        <ProgressDots count={5} active={0} P={P} />
       </View>
     </View>
   );
@@ -86,7 +87,7 @@ function StepName({ name, setName, onNext, onBack }) {
 
         <View style={styles.stepFooter}>
           <PrimaryButton P={P} onPress={onNext} disabled={!name.trim()}>Continue</PrimaryButton>
-          <ProgressDots count={4} active={1} P={P} />
+          <ProgressDots count={5} active={1} P={P} />
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -142,7 +143,7 @@ function StepAge({ age, setAge, onNext, onBack }) {
 
         <View style={styles.stepFooter}>
           <PrimaryButton P={P} onPress={onNext} disabled={!valid}>Continue</PrimaryButton>
-          <ProgressDots count={4} active={2} P={P} />
+          <ProgressDots count={5} active={2} P={P} />
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -179,7 +180,72 @@ function StepInterests({ interests, setInterests, onNext, onBack }) {
         <PrimaryButton P={P} onPress={onNext} disabled={interests.length === 0}>
           {interests.length === 0 ? 'Pick at least one' : `Continue with ${interests.length}`}
         </PrimaryButton>
-        <ProgressDots count={4} active={3} P={P} />
+        <ProgressDots count={5} active={3} P={P} />
+      </View>
+    </View>
+  );
+}
+
+// ─── Step 4: Survey ─────────────────────────────────────────────
+function StepSurvey({ surveyAnswers, setSurveyAnswers, onNext, onBack, submitting }) {
+  const allAnswered = SURVEY_QUESTIONS.every(q => surveyAnswers[q.key]);
+
+  const select = (questionKey, optionValue) => {
+    setSurveyAnswers(prev => ({ ...prev, [questionKey]: optionValue }));
+  };
+
+  return (
+    <View style={styles.stepContainer}>
+      <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+        <Text style={[styles.backBtnText, { color: P.inkSoft }]}>← Back</Text>
+      </TouchableOpacity>
+
+      <View style={[styles.stepBody, { flex: 1 }]}>
+        <Text style={[styles.stepTitle, { color: P.ink }]}>A few quick questions</Text>
+        <Text style={[styles.stepSub, { color: P.inkSoft }]}>
+          Helps us find the right people and pace for you.
+        </Text>
+
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+          {SURVEY_QUESTIONS.map((q, qi) => (
+            <View key={q.key} style={styles.surveyQuestion}>
+              <Text style={[styles.surveyPrompt, { color: P.ink }]}>
+                {qi + 1}. {q.prompt}
+              </Text>
+              {q.options.map(opt => {
+                const selected = surveyAnswers[q.key] === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => select(q.key, opt.value)}
+                    activeOpacity={0.75}
+                    style={[
+                      styles.surveyOption,
+                      {
+                        borderColor: selected ? P.primary : P.line,
+                        backgroundColor: selected ? P.primary + '22' : P.surface,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.surveyRadio, { borderColor: selected ? P.primary : P.line }]}>
+                      {selected && <View style={[styles.surveyRadioFill, { backgroundColor: P.primary }]} />}
+                    </View>
+                    <Text style={[styles.surveyOptionText, { color: selected ? P.ink : P.inkSoft }]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={styles.stepFooter}>
+        <PrimaryButton P={P} onPress={onNext} disabled={!allAnswered || submitting}>
+          {submitting ? 'Saving…' : allAnswered ? 'Finish' : 'Answer all questions'}
+        </PrimaryButton>
+        <ProgressDots count={5} active={4} P={P} />
       </View>
     </View>
   );
@@ -192,6 +258,7 @@ export default function DoOnboardingScreen({ initialName = '', onComplete }) {
   const [name, setName] = useState(initialName);
   const [age, setAge] = useState('');
   const [interests, setInterests] = useState([]);
+  const [surveyAnswers, setSurveyAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -203,7 +270,7 @@ export default function DoOnboardingScreen({ initialName = '', onComplete }) {
     setSubmitting(true);
     setError('');
     try {
-      await onComplete({ name: name.trim(), age: parseInt(age, 10), interests, surveyAnswers: {} });
+      await onComplete({ name: name.trim(), age: parseInt(age, 10), interests, surveyAnswers });
     } catch (e) {
       setError(e?.message || 'Could not save. Try again.');
       setSubmitting(false);
@@ -225,8 +292,17 @@ export default function DoOnboardingScreen({ initialName = '', onComplete }) {
         <StepInterests
           interests={interests}
           setInterests={setInterests}
+          onNext={next}
+          onBack={back}
+        />
+      )}
+      {step === 4 && (
+        <StepSurvey
+          surveyAnswers={surveyAnswers}
+          setSurveyAnswers={setSurveyAnswers}
           onNext={finish}
           onBack={back}
+          submitting={submitting}
         />
       )}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -273,6 +349,20 @@ const styles = StyleSheet.create({
   inputHint: { fontFamily: 'DMSans_400Regular', fontSize: 13, marginTop: 14 },
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 16 },
+
+  surveyQuestion: { marginBottom: 28 },
+  surveyPrompt: { fontFamily: 'DMSans_600SemiBold', fontSize: 15, lineHeight: 22, marginBottom: 12 },
+  surveyOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 14, marginBottom: 8,
+  },
+  surveyRadio: {
+    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  surveyRadioFill: { width: 10, height: 10, borderRadius: 5 },
+  surveyOptionText: { fontFamily: 'DMSans_400Regular', fontSize: 14, flex: 1 },
 
   errorText: { color: '#b3261e', fontSize: 13, textAlign: 'center', marginBottom: 12, paddingHorizontal: 24 },
 });
