@@ -101,10 +101,12 @@ function AppGate() {
           }
         } catch { /* network failure — trust local flag */ }
         setHasOnboarded(true);
-      } else if (profile?.interests?.length > 0) {
-        AsyncStorage.setItem(userStorageKeys(user.uid).onboarded, 'true');
-        setHasOnboarded(true);
       } else {
+        // No flag set yet. Do NOT shortcut based on profile.interests — that
+        // fires mid-onboarding (when completeProfile saves interests) and causes
+        // navigation to the main app before submitOnboardingSurvey runs,
+        // resulting in a 0 score. Only the explicit flag set at the end of
+        // handleOnboardingComplete should gate this transition.
         setHasOnboarded(false);
       }
     });
