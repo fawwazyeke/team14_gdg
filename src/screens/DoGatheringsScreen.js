@@ -8,10 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useDoTheme } from '../context/DoThemeContext';
 import { Card } from '../components/DoAtoms';
+import { apiFetch } from '../services/backendClient';
 import {
   getEvents, EVENT_CATEGORIES,
   joinEvent, unjoinEvent, getMyEvents, eventHasPassed,
 } from '../services/eventsService';
+
+const GATHERING_THRESHOLD = 100;
 
 
 const CITIES = [
@@ -133,6 +136,22 @@ function ParticipatedRow({ item, P, onReflect }) {
   );
 }
 
+// ─── Locked state ────────────────────────────────────────────────
+function LockedScreen({ score, P, insets }) {
+  const needed = GATHERING_THRESHOLD - Math.floor(score ?? 0);
+  return (
+    <View style={[styles.root, { backgroundColor: P.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: insets.top }]}>
+      <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
+      <Text style={[styles.screenTitle, { color: P.ink, textAlign: 'center', marginBottom: 8 }]}>Not yet</Text>
+      <Text style={[styles.emptyText, { color: P.inkSoft, marginTop: 0 }]}>
+        Gatherings unlock at {GATHERING_THRESHOLD} points.{'\n'}
+        You need {needed} more point{needed !== 1 ? 's' : ''}.{'\n\n'}
+        Keep chatting with Do and completing missions.
+      </Text>
+    </View>
+  );
+}
+
 // ─── Main screen ─────────────────────────────────────────────────
 export default function DoGatheringsScreen() {
   const { P } = useDoTheme();
@@ -140,6 +159,18 @@ export default function DoGatheringsScreen() {
   const { width } = useWindowDimensions();
   const stackFilters = width < 600;
   const navigation = useNavigation();
+
+  const [canAccess, setCanAccess] = useState(null);
+  const [userScore, setUserScore] = useState(0);
+
+  useFocusEffect(useCallback(() => {
+    apiFetch('/users/me/status')
+      .then(data => {
+        setCanAccess(data.can_access_gatherings);
+        setUserScore(data.stability_score ?? 0);
+      })
+      .catch(() => setCanAccess(false));
+  }, []));
 
   const [activeTab, setActiveTab] = useState('Discover');
   const [city, setCity] = useState('seoul');
@@ -231,6 +262,10 @@ export default function DoGatheringsScreen() {
   const handleReflect = (participation) => {
     navigation.navigate('EventFeedback', { participation });
   };
+
+  if (canAccess === false) {
+    return <LockedScreen score={userScore} P={P} insets={insets} />;
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: P.bg }]}>

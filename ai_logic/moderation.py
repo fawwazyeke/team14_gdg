@@ -40,8 +40,9 @@ _SEVERE_KEYWORDS = [
     "오프라인 만남", "집 주소", "전화번호",
 ]
 _WARN_KEYWORDS = [
-    "badword1", "badword2", "idiot", "stupid",
-    "욕설1", "욕설2",
+    "idiot", "stupid", "moron", "dumb", "loser", "ugly", "worthless",
+    "shut up", "go away", "hate you",
+    "바보", "멍청이", "쓸모없", "꺼져", "싫어", "못생",
 ]
 
 

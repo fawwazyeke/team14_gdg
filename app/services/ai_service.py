@@ -17,7 +17,9 @@ Firestore 필드 → ai_logic user_profile 매핑:
 from ai_logic.memory import SummaryBufferMemory
 from ai_logic.prompts import CHATBOT_SYSTEM_PROMPT, build_chat_prompt
 from app.database import user_doc
-from app.services.gemini_service import generate_json
+from app.services.gemini_service import generate_json, _get_client
+from app.services.stability_service import apply_score_event, apply_moderation_penalty
+from ai_logic.moderation import moderate
 
 
 # ── 프로필 변환 ───────────────────────────────────────────────────────────────
@@ -131,6 +133,27 @@ def chat_with_ai(uid: str, user_message: str) -> dict:
     반환 키:
       reply, detected_emotion, suggested_next_action, profile_update_hint
     """
+    # 0. 검열 (Layer1 키워드 + Layer2 Gemini)
+    try:
+        mod = moderate(user_message, mode="ai", client=_get_client())
+        mod_dict = {
+            "action":      mod.action,
+            "score_delta": mod.score_delta,
+            "reason":      mod.reason,
+            "warning_msg": mod.warning_msg,
+            "is_toxic":    mod.is_toxic,
+            "severity":    mod.severity,
+        }
+        if mod.action == "block":
+            apply_moderation_penalty(uid, mod_dict, context="ai_chat", content=user_message)
+            return {**_FALLBACK_REPLY,
+                    "reply": mod.warning_msg or "I can't respond to that.",
+                    "_blocked": True}
+        if mod.action in ("warn", "severe_warn", "crisis"):
+            apply_moderation_penalty(uid, mod_dict, context="ai_chat", content=user_message)
+    except Exception:
+        pass  # 검열 실패해도 채팅은 계속
+
     # 1. 프로필 + 메모리 로드 (Firestore 1회 읽기)
     snap = user_doc(uid).get()
     data = snap.to_dict() or {} if snap.exists else {}
@@ -167,6 +190,12 @@ def chat_with_ai(uid: str, user_message: str) -> dict:
         _save_memory(uid, mem)
     except Exception:
         pass  # 저장 실패해도 응답은 반환
+
+    # 5-b. AI 채팅 점수 이벤트 (+0.5점)
+    try:
+        apply_score_event(uid, "ai_chat")
+    except Exception:
+        pass
 
     # 6. profile_update_hint → Firestore 프로필 업데이트
     hint = result.get("profile_update_hint") or {}
