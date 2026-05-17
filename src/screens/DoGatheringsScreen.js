@@ -263,8 +263,8 @@ export default function DoGatheringsScreen() {
     navigation.navigate('EventFeedback', { participation });
   };
 
-  if (canAccess === false) {
-    return <LockedScreen score={userScore} P={P} insets={insets} />;
+  if (canAccess !== true) {
+    return canAccess === null ? null : <LockedScreen score={userScore} P={P} insets={insets} />;
   }
 
   return (
